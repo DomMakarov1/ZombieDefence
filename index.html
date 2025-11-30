@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zombie Defense Command</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-layer">
+        <div id="hud">
+            <div class="stat-box">
+                <div class="stat">❤️ <span id="lives-display">20</span></div>
+                <div class="stat">💰 <span id="money-display">150</span></div>
+                <div class="stat">🧟 Wave: <span id="wave-display">1</span></div>
+                <div class="stat">🗺️ Map: <span id="map-display">1</span></div>
+            </div>
+            <div id="controls">
+                <button id="speed-btn" class="speed-btn" onclick="toggleSpeed()">1x</button>
+                <button id="start-wave-btn" class="start-wave">Start Wave</button>
+            </div>
+        </div>
+
+        <div id="notification">Notification Text</div>
+
+        <div id="mobile-confirm" class="hidden">
+            <button class="confirm-btn btn-yes" onclick="confirmPlacement()">✓</button>
+            <button class="confirm-btn btn-no" onclick="cancelPlacement()">✗</button>
+        </div>
+
+        <div id="upgrade-panel">
+            <div class="panel-header">
+                <div class="panel-title" id="upg-title">Tower</div>
+                <div style="font-size: 12px; color: #aaa;">Kills: <span id="upg-kills" style="color:white">0</span></div>
+            </div>
+            <div class="panel-stats">
+                <div class="stat-row">Dmg: <span class="stat-val" id="upg-dmg">10</span></div>
+                <div class="stat-row">Rng: <span class="stat-val" id="upg-rng">150</span></div>
+                <div class="stat-row">Spd: <span class="stat-val" id="upg-spd">Fast</span></div>
+                <div class="stat-row">Type: <span class="stat-val" id="upg-type">Normal</span></div>
+            </div>
+            
+            <button id="upgrade-action-btn" class="upgrade-btn" onclick="upgradeSelectedTower()">
+                <span class="upgrade-name">Upgrade Name</span>
+                <span class="upgrade-cost">$150</span>
+                <span class="upgrade-desc">Description of the upgrade.</span>
+            </button>
+            
+            <button class="sell-btn" onclick="sellSelectedTower()">Sell ($<span id="sell-price">50</span>)</button>
+        </div>
+
+        <div id="tower-palette">
+            <div id="palette-toggle" onclick="togglePalette()">▼</div>
+            <div id="palette-container" style="display:flex; gap:10px;">
+                <!-- Filled dynamically by JS -->
+            </div>
+        </div>
+
+        <div id="start-screen" class="modal">
+            <h1 style="color:#f1c40f;">Zombie Defense</h1>
+            <p>Defend the base from the undead!</p>
+            <button class="modal-btn" onclick="startGame(1)">Start Campaign</button>
+            <button class="modal-btn skip-btn" onclick="startGame(2)">Skip to Map 2</button>
+            <button class="modal-btn skip-btn" onclick="startGame(3)">Skip to Map 3</button>
+        </div>
+
+        <div id="game-over-screen" class="modal hidden">
+            <h1>Game Over</h1>
+            <p>The zombies ate your brains.</p>
+            <button class="modal-btn" onclick="resetGame(gameState.mapLevel)">Try Again</button>
+        </div>
+        
+        <div id="victory-screen" class="modal hidden">
+            <h1 style="color:#2ecc71;">Map Cleared!</h1>
+            <p>You survived all waves!</p>
+            <button id="next-map-btn" class="modal-btn" onclick="nextMap()">Next Map</button>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
