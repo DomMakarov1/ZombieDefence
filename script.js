@@ -142,11 +142,11 @@ const TOWER_TYPES = {
         ]
     },
     sniper: {
-        name: "Sniper", cost: 250, range: 315, damage: 40, fireRate: 120, color: '#27ae60', projSpeed: 30, projType: 'sniper',
+        name: "Sniper", cost: 350, range: 315, damage: 40, fireRate: 120, color: '#27ae60', projSpeed: 30, projType: 'sniper',
         upgrades: [
-            { name: "AP Rounds", cost: 200, damage: 60, armorPierce: true, desc: "Ignores Armor" },
-            { name: "50. Cal", cost: 700, damage: 150, range: 500, desc: "Massive Damage" },
-            { name: "Thermal Optics", cost: 1800, damage: 300, range: 600, fireRate: 80, desc: "Never misses" }
+            { name: "AP Rounds", cost: 450, damage: 60, armorPierce: true, desc: "Ignores Armor" },
+            { name: "50. Cal", cost: 700, damage: 100, range: 500, desc: "Massive Damage" },
+            { name: "Thermal Optics", cost: 1800, damage: 225, range: 600, fireRate: 80, desc: "Never misses" }
         ]
     },
     mg: {
@@ -284,6 +284,8 @@ let gameState = {
     scale: 1,
     paletteCollapsed: false
 };
+
+let gameLoopId = null;
 
 // --- Helper Functions ---
 
@@ -622,6 +624,7 @@ class Enemy {
         if (this.typeKey === 'scientist') {
              gameState.enemies.forEach(e => {
                  if (e !== this && Math.hypot(e.x - this.x, e.y - this.y) < 100) {
+                    //
                  }
              });
         }
@@ -1641,10 +1644,13 @@ function toggleSpeed() {
 function startGame(mapId) {
     document.getElementById('start-screen').classList.add('hidden');
     resetGame(mapId);
-    gameLoop();
 }
 
 function resetGame(mapId) {
+    if (gameLoopId) {
+        cancelAnimationFrame(gameLoopId);
+    }
+
     gameState = {
         mapLevel: mapId,
         money: mapId === 1 ? 450 : (mapId === 2 ? 600 : 800),
@@ -1682,6 +1688,8 @@ function resetGame(mapId) {
     setupPalette(mapId);
     setupWaveProgressUI();
     updateUI();
+
+    gameLoop(); 
 }
 
 function nextMap() {
@@ -1739,7 +1747,7 @@ function gameLoop() {
     if (gameState.gameOver) return;
     for (let i = 0; i < gameState.speedMultiplier; i++) update();
     render();
-    requestAnimationFrame(gameLoop);
+    gameLoopId = requestAnimationFrame(gameLoop);
 }
 
 function update() {
