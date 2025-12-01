@@ -191,11 +191,11 @@ const TOWER_TYPES = {
         ]
     },
     mortar: {
-        name: "Mortar Team", cost: 800, range: 400, damage: 70, fireRate: 300, color: '#7f8c8d', projSpeed: 5, projType: 'bomb', aoe: 40,
+        name: "Mortar Team", cost: 800, range: 500, damage: 100, fireRate: 240, color: '#7f8c8d', projSpeed: 5, projType: 'bomb', aoe: 40,
         upgrades: [
-            { name: "Rapid Loader", cost: 600, fireRate: 240, desc: "Faster Reload" },
-            { name: "Heavy Shells", cost: 2000, damage: 140, aoe: 80, desc: "Double Dmg & AoE" },
-            { name: "Nuke Shell", cost: 4500, damage: 800, aoe: 400, desc: "Map wiper" }
+            { name: "Rapid Loader", cost: 600, fireRate: 180, desc: "Faster Reload" },
+            { name: "Heavy Shells", cost: 2000, damage: 200, aoe: 60, desc: "2x Dmg & 1.5x AoE" },
+            { name: "Nuke Shell", cost: 4500, range: 600, damage: 500, aoe: 160, desc: "Map wiper" }
         ]
     },
     // MAP 3 (LAB)
@@ -242,7 +242,7 @@ const ZOMBIE_TYPES = {
     carrier: { hp: 550, armor: 999, speed: 0.6, reward: 50, color: '#d35400', radius: 30, damage: 15 },
     mini_carrier: { hp: 250, armor: 999, speed: 0.9, reward: 25, color: '#e67e22', radius: 22, damage: 10 },
     vampire: { hp: 400, armor: 2, speed: 1.2, reward: 30, color: '#800000', radius: 15, damage: 10 },
-    necromancer: { hp: 1500, armor: 20, speed: 0.3, reward: 150, color: '#000000', radius: 28, damage: 50 },
+    necromancer: { hp: 1500, armor: 50, speed: 0.3, reward: 150, color: '#000000', radius: 28, damage: 50 },
     mutant: { hp: 1000, armor: 0, speed: 0.7, reward: 80, color: '#27ae60', radius: 35, damage: 25 },
     scientist: { hp: 110, armor: 0, speed: 1.6, reward: 40, color: '#fff', radius: 14, damage: 5 }
 };
@@ -291,11 +291,11 @@ function getWaveData(mapId, waveNum) {
     const w = (data, msg = null) => ({ data: data, msg: msg });
     // MAP 1
     if (mapId === 1) {
-        if (waveNum <= 9) return [['walker', 5 + waveNum*2, 60], ['runner', Math.floor(waveNum/2), 80]];
-        if (waveNum === 10) return [['tank', 2, 150], ['walker', 20, 30]];
-        if (waveNum <= 20) return [['tank', Math.floor(waveNum/2), 100], ['runner', 20, 30]];
-        if (waveNum <= 30) return [['carrier', 1 + Math.floor((waveNum-20)/3), 300], ['tank', 10, 80]];
-        return [['boss', 1 + Math.floor((waveNum-30)/2), 200], ['carrier', 5, 200], ['mini_carrier', 10, 100]];
+        if (waveNum <= 9) return w([['walker', 5 + waveNum*2, 60], ['runner', Math.floor(waveNum/2), 80]]);
+        if (waveNum === 10) return w([['tank', 2, 150], ['walker', 20, 30]], "Warning: Heavily Armored Tanks!");
+        if (waveNum <= 20) return w([['tank', Math.floor(waveNum/2), 100], ['runner', 20, 30]]);
+        if (waveNum <= 30) return w([['carrier', 1 + Math.floor((waveNum-20)/3), 300], ['tank', 10, 80]]);
+        return w([['boss', 1 + Math.floor((waveNum-30)/2), 200], ['carrier', 5, 200], ['mini_carrier', 10, 100]], "BOSS WAVE!");
     } 
     // MAP 2
     else if (mapId === 2) {
@@ -325,32 +325,32 @@ function getWaveData(mapId, waveNum) {
         if (waveNum === 16) return w([['walker', 50, 10],['runner',50,10],['tank',20,10]]);
         if (waveNum === 17) return w([['walker',12,14],['tank',12,20],['walker',5,30],['runner',23,10],['tank',7,23],['boss',4,25],['vampire',3,25]],"Chaos!");
         if (waveNum === 18) return w([['vampire',8,50]]);
-        if (waveNum === 19) return w();
+        if (waveNum === 19) return w([['vampire',5,40],['tank',10,30],['boss',20,20]]);
+        if (waveNum === 20) return w([['vampire',12,30],['necromancer',1,30]],"The dead are awakening. The necromancer!");
+        if (waveNum === 21) return w([['tank',50,20]]);
     }
     // MAP 3 (Lab)
     else {
-        // Early Game: Easier start, no Scientists yet
-        if (waveNum === 1) return [['walker', 10, 80]]; // Reduced count, slower spawn
-        if (waveNum <= 3) return [['walker', 20, 60], ['runner', 3, 80]];
+        if (waveNum === 1) return w([['walker', 10, 80]], "Security Breach Detected"); 
+        if (waveNum <= 3) return w([['walker', 20, 60], ['runner', 3, 80]]);
         
         // Wave 5: Just walkers/runners, removed Scientists
-        if (waveNum <= 5) return [['walker', 30, 40], ['runner', 12, 40]]; 
+        if (waveNum <= 5) return w([['walker', 30, 40], ['runner', 12, 40]]); 
         
         // Mid Game: Introduce Scientists at Wave 6
-        // Now Wave 6 has the Mutant AND the first Scientists
-        if (waveNum === 6) return [['mutant', 1, 600], ['scientist', 2, 150], ['walker', 15, 30]]; 
+        if (waveNum === 6) return w([['mutant', 1, 600], ['scientist', 2, 150], ['walker', 15, 30]], "Scientists detected: Immune to basic attacks?"); 
         
-        if (waveNum <= 10) return [['mutant', 2, 400], ['scientist', 4, 120], ['runner', 25, 25]];
+        if (waveNum <= 10) return w([['mutant', 2, 400], ['scientist', 4, 120], ['runner', 25, 25]]);
         
         // Late Game: Heavy Armor & Regen
-        if (waveNum <= 15) return [['tank', 15, 80], ['mutant', 5, 200], ['scientist', 8, 80]];
-        if (waveNum <= 20) return [['carrier', 5, 250], ['mutant', 10, 150], ['necromancer', 2, 400]];
+        if (waveNum <= 15) return w([['tank', 15, 80], ['mutant', 5, 200], ['scientist', 8, 80]], "Shields Active: Use rapid fire!");
+        if (waveNum <= 20) return w([['carrier', 5, 250], ['mutant', 10, 150], ['necromancer', 2, 400]]);
         
         // Endgame: Total Chaos
-        if (waveNum <= 25) return [['boss', 3, 200], ['mutant', 20, 100], ['scientist', 15, 60]];
+        if (waveNum <= 25) return w([['boss', 3, 200], ['mutant', 20, 100], ['scientist', 15, 60]]);
         
         // Final Wave
-        return [['boss', 10, 100], ['mutant', 30, 50], ['carrier', 10, 100]];
+        return w([['boss', 10, 100], ['mutant', 30, 50], ['carrier', 10, 100]], "TOTAL CONTAINMENT FAILURE");
     }
 }
 
@@ -592,10 +592,24 @@ class Enemy {
 
         if (this.typeKey === 'necromancer') {
             this.summonCooldown++;
-            if (this.summonCooldown > 200) { 
+            if (this.summonCooldown > 60) { 
                 this.summonCooldown = 0;
-                spawnEnemy('walker', this.x + (dx/dist)*50, this.y + (dy/dist)*50, this.pathIndex);
-                createParticles(this.x, this.y, '#000', 10);
+                
+                let spawnIndex = this.pathIndex;
+                
+                if (spawnIndex < MAPS[gameState.mapLevel].points.length - 2) {
+                     spawnIndex++; 
+                }
+
+                const spawnX = this.x + (dx / dist) * 40; 
+                const spawnY = this.y + (dy / dist) * 40;
+
+                const minions = ['walker', 'runner', 'tank'];
+                const randomMinion = minions[Math.floor(Math.random() * minions.length)];
+
+                spawnEnemy(randomMinion, spawnX, spawnY, spawnIndex);
+                
+                createParticles(this.x, this.y, '#9b59b6', 15);
             }
         }
         if (this.typeKey === 'mutant') {
@@ -608,7 +622,6 @@ class Enemy {
         if (this.typeKey === 'scientist') {
              gameState.enemies.forEach(e => {
                  if (e !== this && Math.hypot(e.x - this.x, e.y - this.y) < 100) {
-                     // Buff logic could go here
                  }
              });
         }
