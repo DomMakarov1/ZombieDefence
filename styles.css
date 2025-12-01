@@ -1,16 +1,16 @@
-        /* --- COPY INTO style.css START --- */
-        :root {
-            --primary: #2c3e50;
-            --accent: #e74c3c;
-            --text: #ecf0f1;
-            --ui-bg: rgba(30, 30, 30, 0.95);
-            --ui-border: #555;
-        }
+/* --- COPY INTO style.css START --- */
+:root {
+    --primary: #2c3e50;
+    --accent: #e74c3c;
+    --text: #ecf0f1;
+    --ui-bg: rgba(30, 30, 30, 0.95);
+    --ui-border: #555;
+}
 
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #000;
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #000;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: var(--text);
             display: flex;
@@ -261,4 +261,62 @@
     border: 1px solid #000;
     display: none; /* Hidden by default, shown via JS draw */
     pointer-events: none;
+}
+
+/* --- WAVE PROGRESS BAR --- */
+#wave-progress-container {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px; /* Width of the bar */
+    height: 20px;
+    display: flex;
+    align-items: center;
+    pointer-events: none; /* Let clicks pass through if needed */
+}
+
+#wave-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #555;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+#wave-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #3498db, #2ecc71);
+    transition: width 0.5s ease;
+}
+
+#wave-markers {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.milestone-marker {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    background: #2c3e50;
+    border: 2px solid #7f8c8d;
+    border-radius: 50%;
+    z-index: 2;
+    transition: all 0.3s ease;
+}
+
+.milestone-marker.reached {
+    background: #f1c40f; /* Gold for Boss */
+    border-color: #fff;
+    box-shadow: 0 0 5px #f1c40f;
+    transform: translate(-50%, -50%) scale(1.2);
 }

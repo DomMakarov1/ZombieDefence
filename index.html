@@ -19,7 +19,15 @@
                 <div class="stat">🧟 Wave: <span id="wave-display">1</span></div>
                 <div class="stat">🗺️ Map: <span id="map-display">1</span></div>
             </div>
+            <div id="wave-progress-container">
+                <div id="wave-track">
+                    <div id="wave-fill"></div>
+                </div>
+                <div id="wave-markers">
+                    </div>
+            </div>
             <div id="controls">
+                <button id="mute-btn" onclick="toggleSound()">🔊</button>
                 <button id="speed-btn" class="speed-btn" onclick="toggleSpeed()">1x</button>
                 <button id="start-wave-btn" class="start-wave">Start Wave</button>
             </div>

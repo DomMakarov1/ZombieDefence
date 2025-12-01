@@ -5,9 +5,15 @@
 const AudioSys = {
     ctx: new (window.AudioContext || window.webkitAudioContext)(),
     enabled: true,
+    muted: false,
     
+    toggleMute: function() {
+        this.muted = !this.muted;
+        return this.muted;
+    },
+
     playTone: function(freq, type, duration, vol=0.1) {
-        if (!this.enabled) return;
+        if (!this.enabled || this.muted) return;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = type;
@@ -21,18 +27,15 @@ const AudioSys = {
     },
 
     playCharge: function() {
-        if (!this.enabled) return;
+        if (!this.enabled || this.muted) return;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sine';
-        // Ramp frequency from 200Hz to 1000Hz over 1 second
         osc.frequency.setValueAtTime(200, this.ctx.currentTime);
         osc.frequency.linearRampToValueAtTime(1000, this.ctx.currentTime + 1);
-        
         gain.gain.setValueAtTime(0, this.ctx.currentTime);
         gain.gain.linearRampToValueAtTime(0.1, this.ctx.currentTime + 0.1);
         gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
-        
         osc.connect(gain);
         gain.connect(this.ctx.destination);
         osc.start();
@@ -40,9 +43,8 @@ const AudioSys = {
     },
 
     playShoot: function(type) {
-        if (!this.enabled) return;
+        if (!this.enabled || this.muted) return;
         if (type === 'rail') {
-            // Heavy Railgun Blast
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
             osc.type = 'sawtooth';
@@ -62,9 +64,22 @@ const AudioSys = {
     },
 
     playExplosion: function() {
+        if (!this.enabled || this.muted) return;
         this.playTone(50, 'sawtooth', 0.4, 0.15);
     }
 };
+
+function toggleSound() {
+    const isMuted = AudioSys.toggleMute();
+    const btn = document.getElementById('mute-btn');
+    if (isMuted) {
+        btn.innerText = "🔇";
+        btn.style.opacity = "0.5";
+    } else {
+        btn.innerText = "🔊";
+        btn.style.opacity = "1";
+    }
+}
 
 const INTERNAL_WIDTH = 1280;
 const INTERNAL_HEIGHT = 720;
@@ -152,27 +167,27 @@ const TOWER_TYPES = {
     },
     // MAP 2
     pyro: {
-        name: "Pyro", cost: 350, range: 120, damage: 1.5, fireRate: 5, color: '#e74c3c', projSpeed: 15, projType: 'flame', armorPierce: true,
+        name: "Pyro", cost: 350, range: 120, damage: 1.6, fireRate: 5, color: '#e74c3c', projSpeed: 15, projType: 'flame', armorPierce: false,
         upgrades: [
-            { name: "Napalm", cost: 400, damage: 3, range: 140, desc: "Hotter flames" },
-            { name: "Blue Fire", cost: 1000, damage: 6, fireRate: 4, desc: "Melts Armor" },
+            { name: "Napalm", cost: 425, damage: 3, range: 140, desc: "Hotter flames" },
+            { name: "Blue Fire", cost: 1000, damage: 6, fireRate: 4, armorPierce: true, desc: "Melts Armor" },
             { name: "Dragon's Breath", cost: 2400, damage: 10, range: 200, aoe: 50, desc: "Total Incineration" }
         ]
     },
     tesla: {
-        name: "Tesla", cost: 500, range: 180, damage: 6, fireRate: 45, color: '#f1c40f', projSpeed: 0, projType: 'lightning', chain: 2,
+        name: "Tesla", cost: 500, range: 180, damage: 9, fireRate: 45, color: '#f1c40f', projSpeed: 0, projType: 'lightning', chain: 2,
         upgrades: [
-            { name: "High Voltage", cost: 650, damage: 12, chain: 3, desc: "+Dmg, +1 Chain" },
+            { name: "High Voltage", cost: 650, damage: 18, chain: 3, desc: "+Dmg, +1 Chain" },
             { name: "Superconductor", cost: 1500, fireRate: 30, range: 220, desc: "Faster shocks" },
             { name: "Storm Coil", cost: 3200, damage: 35, chain: 8, desc: "Chain lightning storm" }
         ]
     },
     laser: {
-        name: "Laser Trooper", cost: 450, range: 250, damage: 1, fireRate: 3, color: '#3498db', projSpeed: 99, projType: 'beam', rampSpeed: 1,
+        name: "Laser Trooper", cost: 650, range: 250, damage: 2, fireRate: 6, color: '#3498db', projSpeed: 99, projType: 'beam', rampSpeed: 0.45,
         upgrades: [
-            { name: "Focus Lens", cost: 400, range: 300, rampSpeed: 2, desc: "Ramps 2x Faster" },
-            { name: "Gamma Ray", cost: 1200, armorPierce: true, rampSpeed: 3, desc: "Pierces Armor & 3x Ramp" },
-            { name: "Orbital Beam", cost: 3100, range: 800, rampSpeed: 5, desc: "Global Range & 5x Ramp" }
+            { name: "Focus Lens", cost: 600, range: 300, rampSpeed: 0.9, desc: "Ramps 2x Faster" }, 
+            { name: "Gamma Ray", cost: 1400, armorPierce: true, rampSpeed: 1.35, desc: "Pierces Armor & 3x Ramp" }, 
+            { name: "Orbital Beam", cost: 3300, range: 800, rampSpeed: 2.25, desc: "Global Range & 5x Ramp" } 
         ]
     },
     mortar: {
@@ -222,8 +237,8 @@ const TOWER_TYPES = {
 const ZOMBIE_TYPES = {
     walker: { hp: 20, armor: 0, speed: 1.5, reward: 5, color: '#2ecc71', radius: 12, damage: 1 },
     runner: { hp: 15, armor: 0, speed: 3.0, reward: 8, color: '#f1c40f', radius: 10, damage: 1 },
-    tank: { hp: 120, armor: 5, speed: 0.8, reward: 20, color: '#c0392b', radius: 18, damage: 5 },
-    boss: { hp: 800, armor: 10, speed: 0.5, reward: 100, color: '#8e44ad', radius: 25, damage: 20 },
+    tank: { hp: 160, armor: 8, speed: 0.8, reward: 20, color: '#c0392b', radius: 18, damage: 5 },
+    boss: { hp: 1000, armor: 50, speed: 0.5, reward: 100, color: '#8e44ad', radius: 25, damage: 20 },
     carrier: { hp: 550, armor: 999, speed: 0.6, reward: 50, color: '#d35400', radius: 30, damage: 15 },
     mini_carrier: { hp: 250, armor: 999, speed: 0.9, reward: 25, color: '#e67e22', radius: 22, damage: 10 },
     vampire: { hp: 400, armor: 2, speed: 1.2, reward: 30, color: '#800000', radius: 15, damage: 10 },
@@ -273,6 +288,7 @@ let gameState = {
 // --- Helper Functions ---
 
 function getWaveData(mapId, waveNum) {
+    const w = (data, msg = null) => ({ data: data, msg: msg });
     // MAP 1
     if (mapId === 1) {
         if (waveNum <= 9) return [['walker', 5 + waveNum*2, 60], ['runner', Math.floor(waveNum/2), 80]];
@@ -283,24 +299,33 @@ function getWaveData(mapId, waveNum) {
     } 
     // MAP 2
     else if (mapId === 2) {
-        if (waveNum === 1) return [['walker', 10, 60], ['vampire', 1, 200]];
-        if (waveNum <= 3) return [['walker', 15, 50], ['runner', 5, 60], ['vampire', 1, 150]];
-        if (waveNum <= 5) return [['tank', 3, 120], ['vampire', 2, 120], ['walker', 20, 40]];
-        if (waveNum <= 9) return [['tank', 8, 100], ['vampire', 4, 100], ['runner', 10, 40]];
-        if (waveNum <= 14) return [['tank', 15, 80], ['vampire', 8, 80], ['boss', 1, 300]];
-        if (waveNum <= 19) return [['carrier', 3, 250], ['vampire', 10, 70], ['boss', 2, 200]];
-        if (waveNum <= 24) return [['tank', 25, 50], ['carrier', 5, 200], ['vampire', 15, 60]];
-        if (waveNum === 25) return [['vampire', 10, 30], ['necromancer', 1, 100]]; 
-        if (waveNum <= 39) return [['necromancer', 2, 500], ['vampire', 20, 30], ['tank', 30, 40]];
-        if (waveNum === 40) {
+        if (waveNum === 1) return w([['walker', 12, 60]], "The dead rise...");
+        if (waveNum === 2) return w([['walker', 15, 50], ['runner', 5, 60]], "Runners!");
+        if (waveNum === 3) return w([['walker', 5, 30],['runner', 5, 30]]);
+        if (waveNum === 4) return w([['runner', 20, 50]]);
+        if (waveNum === 5) return w([['walker', 20, 25],['runner', 5, 10]], "How do you like it when they're close together?");
+        if (waveNum === 6) return w([['walker', 10, 20],['runner', 10, 20],['tank', 1, 50]], "Tanky.");
+        if (waveNum === 7) return w([['runner', 20, 30],['tank', 2, 100]]);
+        if (waveNum === 8) return w([['tank', 5, 50]]);
+        if (waveNum === 9) return w([['walker', 50, 15]]);
+        if (waveNum === 10) return w([['boss', 1, 100]], "A boss!");
+        if (waveNum === 11) {
             let wave = [];
-            for(let i=0; i<5; i++) {
-                wave.push(['vampire', 6, 30]);
-                wave.push(['necromancer', 1, 60]);
+            for(let i=0; i<10; i++) {
+                wave.push(['walker', 1, 20]);
+                wave.push(['runner', 1, 20]);
+                wave.push(['tank', 1, 20]);
             }
-            return wave;
+            return w(wave,"A deadly trio.");
         }
-        return [['walker', 100, 10]];
+        if (waveNum === 12) return w([['runner', 100, 10]], "QUICK!");
+        if (waveNum === 13) return w([['tank', 20, 20]]);
+        if (waveNum === 14) return w([['tank', 10, 10],['boss', 2, 30]]);
+        if (waveNum === 15) return w([['boss', 5, 50],['vampire', 1, 50]],"Vampires...");
+        if (waveNum === 16) return w([['walker', 50, 10],['runner',50,10],['tank',20,10]]);
+        if (waveNum === 17) return w([['walker',12,14],['tank',12,20],['walker',5,30],['runner',23,10],['tank',7,23],['boss',4,25],['vampire',3,25]],"Chaos!");
+        if (waveNum === 18) return w([['vampire',8,50]]);
+        if (waveNum === 19) return w();
     }
     // MAP 3 (Lab)
     else {
@@ -1058,7 +1083,6 @@ class Projectile {
         this.x += this.vx;
         this.y += this.vy;
         
-        // Flame Logic (Unchanged)
         if (this.projType === 'flame') {
             this.radius += 0.5; 
             gameState.enemies.forEach(e => {
@@ -1071,22 +1095,18 @@ class Projectile {
             return;
         }
 
-        // TRACKING LOGIC
         if (this.active && this.target && !this.target.finished && this.target.hp > 0) {
-            // CHANGED: Removed 'acid' from this check. 
-            // Now only 'bomb' is excluded. 'acid' will now enter this block and track the target.
-            if (this.projType !== 'bomb') {
-                 const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
-                 this.vx = Math.cos(angle) * this.speed;
-                 this.vy = Math.sin(angle) * this.speed;
-            }
+            
+            const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+            this.vx = Math.cos(angle) * this.speed;
+            this.vy = Math.sin(angle) * this.speed;
 
             const dist = Math.hypot(this.x - this.target.x, this.y - this.target.y);
+
             if (dist < this.target.radius + this.speed) {
                 this.hit(this.target);
             }
-        } 
-        // Fallback Logic (If target dies mid-air or for Bombs)
+        }
         else if (this.projType === 'bomb' || this.projType === 'acid') {
              for (const enemy of gameState.enemies) {
                  if (Math.hypot(this.x - enemy.x, this.y - enemy.y) < enemy.radius + 5) {
@@ -1100,34 +1120,49 @@ class Projectile {
     }
     hit(directHitEnemy) {
         this.active = false;
+        
+        // Acid/Chemist Logic (Keep this)
         if (this.projType === 'acid') {
-            // Determine pool stats based on upgrades (derived from damage/aoe)
-            // Default duration: 180 frames (3 seconds). 
-            // "Sticky Goo" upgrade could increase duration or slow factor.
             let duration = 180; 
-            let slowVal = 0.6; // Enemies move at 60% speed
-            
-            // Check if it's the Tier 2 upgrade (Sticky Goo) based on damage/fireRate signature or specific flags
-            // For simplicity, we assume higher damage = upgraded tower
-            if (this.damage >= 10) slowVal = 0.4; // 40% speed (stronger slow)
-            if (this.aoe >= 80) duration = 300; // Lasts 5 seconds
+            let slowVal = 0.6; 
+            if (this.damage >= 10) slowVal = 0.4; 
+            if (this.aoe >= 80) duration = 300; 
 
             gameState.puddles.push(new Puddle(
-                this.x, 
-                this.y, 
-                this.damage, 
-                duration, 
-                this.aoe, 
-                this.slow
+                this.x, this.y, this.damage, duration, this.aoe, this.slow
             ));
-
             if(AudioSys) AudioSys.playShoot('chemist'); 
             return; 
         }
+
+        // EXPLOSION LOGIC (Fixed)
         if (this.aoe > 0) {
-            let color = this.projType === 'acid' ? '#009432' : '#e74c3c';
-        } else {
-            directHitEnemy.takeDamage(this.damage, this.armorPierce, this.sourceTower);
+            AudioSys.playExplosion();
+
+            // 1. Create Blast Visual
+            gameState.particles.push({
+                type: 'blast',
+                x: this.x, 
+                y: this.y,
+                radius: 5,         // Start small
+                maxRadius: this.aoe, 
+                expandRate: this.aoe / 10, // Expand quickly
+                alpha: 1.0,
+                life: 20,
+                maxLife: 20,
+                color: '#e74c3c'
+            });
+
+            // 2. Apply Damage to Area
+            gameState.enemies.forEach(enemy => {
+                if (Math.hypot(enemy.x - this.x, enemy.y - this.y) <= this.aoe + enemy.radius) {
+                    enemy.takeDamage(this.damage, this.armorPierce, this.sourceTower);
+                }
+            });
+        } 
+        // Single Target Logic
+        else {
+            if(directHitEnemy) directHitEnemy.takeDamage(this.damage, this.armorPierce, this.sourceTower);
         }
     }
     draw(ctx) {
@@ -1137,7 +1172,12 @@ class Projectile {
         } else if (this.projType === 'acid') {
             ctx.fillStyle = '#009432';
             ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI * 2); ctx.fill();
+        } else if (this.projType === 'bomb') {
+            // NEW: Draw a black bomb for Mortars
+            ctx.fillStyle = '#000';
+            ctx.beginPath(); ctx.arc(this.x, this.y, 5, 0, Math.PI * 2); ctx.fill();
         } else {
+            // Standard Bullets
             ctx.fillStyle = this.sourceTower.color;
             ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
         }
@@ -1162,6 +1202,56 @@ function updatePaletteUI() {
         card.classList.remove('selected');
         const type = card.getAttribute('data-type');
         if (gameState.selectedTowerType === type) card.classList.add('selected');
+    });
+}
+
+function setupWaveProgressUI() {
+    // FIX: Use gameState.mapLevel instead of passing mapId argument
+    // This prevents "ReferenceError: mapId is not defined"
+    if (!gameState || !MAPS[gameState.mapLevel]) return;
+    
+    const mapId = gameState.mapLevel; 
+    const totalWaves = MAPS[mapId].waves;
+    const container = document.getElementById('wave-markers');
+    
+    if (!container) return; // Safety check
+    container.innerHTML = ''; 
+    
+    // Create a marker for every 10th wave
+    for (let w = 10; w <= totalWaves; w += 10) {
+        const marker = document.createElement('div');
+        marker.className = 'milestone-marker';
+        
+        // Calculate percentage
+        const pct = (w / totalWaves) * 100;
+        marker.style.left = `${pct}%`;
+        marker.setAttribute('data-wave', w);
+        
+        container.appendChild(marker);
+    }
+    updateWaveProgressUI();
+}
+
+function updateWaveProgressUI() {
+    if (!gameState || !MAPS[gameState.mapLevel]) return;
+    
+    const totalWaves = MAPS[gameState.mapLevel].waves;
+    const currentWave = gameState.wave;
+    
+    // Update the Fill Bar
+    const pct = Math.min(100, (currentWave / totalWaves) * 100);
+    const fillBar = document.getElementById('wave-fill');
+    if (fillBar) fillBar.style.width = `${pct}%`;
+    
+    // Update Markers
+    const markers = document.querySelectorAll('.milestone-marker');
+    markers.forEach(m => {
+        const markerWave = parseInt(m.getAttribute('data-wave'));
+        if (currentWave >= markerWave) {
+            m.classList.add('reached');
+        } else {
+            m.classList.remove('reached');
+        }
     });
 }
 
@@ -1378,8 +1468,25 @@ function spawnEnemy(type, x, y, pathIndex) {
     }
     
     // MAP 2 LOGIC
-    if (gameState.mapLevel === 2 && gameState.wave >= 10) {
-        if (Math.random() < 0.3) e.isAbsorptive = true;
+    if (gameState.mapLevel === 2 && gameState.wave >= 15) {
+        let shieldProb = 0.2;
+
+        if (gameState.wave < 25) {
+            shieldProb = 0.2 + ((gameState.wave - 15) / 10) * 0.3;
+        } else {
+            shieldProb = 0.5;
+        }
+
+        if (Math.random() < shieldProb) {
+            e.isAbsorptive = true;
+            e.absorbStacks = 5;
+
+            if (gameState.wave >= 25) {
+                if (Math.random() < 0.2) {
+                    e.absorbStacks = 10;
+                }
+            }
+        }
     }
 
     // MAP 3 LOGIC
@@ -1527,7 +1634,7 @@ function startGame(mapId) {
 function resetGame(mapId) {
     gameState = {
         mapLevel: mapId,
-        money: mapId === 1 ? 450 : 800,
+        money: mapId === 1 ? 450 : (mapId === 2 ? 600 : 800),
         lives: 20,
         wave: 0,
         enemies: [],
@@ -1560,6 +1667,7 @@ function resetGame(mapId) {
     document.getElementById('map-display').innerText = mapId;
     
     setupPalette(mapId);
+    setupWaveProgressUI();
     updateUI();
 }
 
@@ -1580,14 +1688,22 @@ function startNextWave() {
     gameState.isWaveActive = true;
     gameState.waveQueue = [];
     
-    const waveDef = getWaveData(gameState.mapLevel, gameState.wave + 1);
+    const result = getWaveData(gameState.mapLevel, gameState.wave + 1);
+    const waveDef = result.data;
+    const waveMsg = result.msg;
+
+    if (waveMsg) {
+        showNotification(waveMsg, "#f1c40f");
+    } else {
+        showNotification(`Wave ${gameState.wave + 1}`, "#e67e22");
+    }
     
     waveDef.forEach(group => {
         const [type, count, interval] = group;
         for (let i = 0; i < count; i++) gameState.waveQueue.push({type: type, interval: interval});
     });
     gameState.wave++;
-    showNotification(`Wave ${gameState.wave}`, "#e67e22");
+    setupWaveProgressUI();
     updateUI();
 }
 
@@ -1699,7 +1815,11 @@ function update() {
     for (let i = gameState.particles.length - 1; i >= 0; i--) {
         const p = gameState.particles[i];
         if (p.type === 'blast') {
-             p.life--; p.alpha = p.life / p.maxLife; 
+             p.life--; 
+             p.alpha = p.life / p.maxLife; 
+             
+             if (p.expandRate) p.radius += p.expandRate;
+             
              if (p.life <= 0) gameState.particles.splice(i, 1);
         } else if (p.type === 'bolt') {
              p.life--; if (p.life <= 0) gameState.particles.splice(i, 1);
