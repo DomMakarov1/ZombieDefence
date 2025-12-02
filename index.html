@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zombie Defense Command</title>
+    <title>Zombie Defence</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -31,6 +31,21 @@
                 <button id="speed-btn" class="speed-btn" onclick="toggleSpeed()">1x</button>
                 <button id="start-wave-btn" class="start-wave">Start Wave</button>
             </div>
+        </div>
+
+        <div id="continue-modal" class="modal hidden">
+            <h1 style="color:#3498db;">Save Found</h1>
+            <p>Do you want to continue from Map <span id="save-map-num">0</span> Wave <span id="save-wave-num">0</span>?</p>
+            <div style="display:flex; gap:20px;">
+                <button class="modal-btn" onclick="loadGame()">Yes, Continue</button>
+                <button class="modal-btn" style="background:#c0392b;" onclick="startNewGameFromModal()">No, New Game</button>
+            </div>
+        </div>
+
+        <div id="patch-notes-modal" class="modal hidden" style="z-index: 200;">
+            <h1 style="color:#e67e22;">UPDATE <span id="pn-version">v3.2</span></h1>
+            <div id="pn-content" style="text-align: left; max-width: 500px; margin-bottom: 20px; line-height: 1.5; color: #ddd; max-height: 300px; overflow-y: auto;"></div>
+            <button class="modal-btn" onclick="closePatchNotes()">Awesome!</button>
         </div>
 
         <div id="notification">Notification Text</div>
@@ -69,7 +84,7 @@
         </div>
 
         <div id="start-screen" class="modal">
-            <h1 style="color:#f1c40f;">Zombie Defense</h1>
+            <h1 style="color:#f1c40f;">Zombie Defence</h1>
             <p>Defend the base from the undead!</p>
             <button class="modal-btn" onclick="startGame(1)">Start Campaign</button>
             <button class="modal-btn skip-btn" onclick="startGame(2)">Skip to Map 2</button>

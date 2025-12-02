@@ -1,6 +1,25 @@
 /**
- * ZOMBIE DEFENSE COMMAND - v3.1 (Lab Fixes & New Towers)
+ * ZOMBIE DEFENSE COMMAND - v3.2
+ * Changes:
+ * +Added save system
+ * +Revamped all waves for all maps
+ * +Tweaked all units and enemies
+ * +Scientists now buff nearby enemies
+ * +Other bug fixes/improvements
  */
+
+// --- VERSION CONTROL ---
+const GAME_VERSION = "3.2";
+
+const PATCH_NOTES = `
+    <ul>
+        <li><strong>NEW Save System:</strong> Your progress is now saved automatically after every wave!</li>
+        <li><strong>NEW Scientist Ability:</strong> Scientists now buff nearby enemies (Speed, Health, Armor).</li>
+        <li><strong>Wave Overhauls:</strong> Completely revamped wave structure and difficulty progression.</li>
+        <li><strong>Towers Rebalanced:</strong> Smoother early-game difficulty curve.</li>
+        <li><strong>Bug Fixes:</strong> Fixed Necromancer spawning logic and the game breaking after restarting after dying.</li>
+    </ul>
+`;
 
 const AudioSys = {
     ctx: new (window.AudioContext || window.webkitAudioContext)(),
@@ -109,7 +128,7 @@ const MAPS = {
             {x: 1000, y: 600}, {x: 1280, y: 600}
         ],
         towers: ['pyro', 'tesla', 'laser', 'mortar'],
-        waves: 40
+        waves: 30
     },
     3: {
         name: "Secret Lab",
@@ -118,13 +137,11 @@ const MAPS = {
         pathInner: "#95a5a6", 
         points: [
             {x: 0, y: 150}, {x: 300, y: 150}, {x: 300, y: 600}, 
-            {x: 500, y: 600}, // Teleport Entry (Index 3)
-            // GAP
-            {x: 800, y: 100}, // Teleport Exit (Index 4)
+            {x: 500, y: 600},
+            {x: 800, y: 100},
             {x: 800, y: 500}, {x: 1280, y: 500}
         ],
         teleporters: [{ entry: 3, exit: 4 }],
-        // CHANGED: 'laser' -> 'lab_laser'
         towers: ['chemist', 'trumpeter', 'lab_laser', 'railgun'], 
         waves: 30
     }
@@ -142,9 +159,9 @@ const TOWER_TYPES = {
         ]
     },
     sniper: {
-        name: "Sniper", cost: 350, range: 315, damage: 40, fireRate: 120, color: '#27ae60', projSpeed: 30, projType: 'sniper',
+        name: "Sniper", cost: 350, range: 315, damage: 40, fireRate: 180, color: '#27ae60', projSpeed: 30, projType: 'sniper',
         upgrades: [
-            { name: "AP Rounds", cost: 450, damage: 60, armorPierce: true, desc: "Ignores Armor" },
+            { name: "AP Rounds", cost: 450, damage: 60, fireRate: 120, armorPierce: true, desc: "Armour penetration + 1.5x speed" },
             { name: "50. Cal", cost: 700, damage: 100, range: 500, desc: "Massive Damage" },
             { name: "Thermal Optics", cost: 1800, damage: 225, range: 600, fireRate: 80, desc: "Never misses" }
         ]
@@ -153,16 +170,16 @@ const TOWER_TYPES = {
         name: "Gunner", cost: 400, range: 120, damage: 7, fireRate: 6, color: '#e67e22', projSpeed: 12, projType: 'bullet',
         upgrades: [
             { name: "Belt Fed", cost: 300, fireRate: 4, range: 130, desc: "Insane Fire Rate" },
-            { name: "Minigun", cost: 800, damage: 6, fireRate: 2, desc: "Bullet Hose" },
-            { name: "Laser Gatling", cost: 2100, damage: 15, fireRate: 1, desc: "Melts everything" }
+            { name: "Minigun", cost: 800, fireRate: 2, desc: "Bullet Hose" },
+            { name: "Laser Gatling", cost: 2100, damage: 12, fireRate: 1, desc: "Melts everything" }
         ]
     },
     bombardier: {
-        name: "Bombardier", cost: 600, range: 200, damage: 30, fireRate: 150, color: '#8e44ad', projSpeed: 6, projType: 'bomb', aoe: 100, armorPierce: true,
+        name: "Bombardier", cost: 600, range: 200, damage: 30, fireRate: 150, color: '#8e44ad', projSpeed: 6, projType: 'bomb', aoe: 70, armorPierce: true,
         upgrades: [
-            { name: "Big Bertha", cost: 400, aoe: 150, damage: 40, desc: "Larger Explosion" },
+            { name: "Big Bertha", cost: 400, aoe: 100, damage: 40, desc: "Larger Explosion" },
             { name: "Cluster Bombs", cost: 1100, damage: 70, fireRate: 90, desc: "Deadly Payload" },
-            { name: "MOAB", cost: 2600, damage: 200, aoe: 250, fireRate: 180, desc: "Massive Ordnance" }
+            { name: "MOAB", cost: 2600, damage: 140, aoe: 180, fireRate: 160, desc: "Massive Ordnance" }
         ]
     },
     // MAP 2
@@ -177,8 +194,8 @@ const TOWER_TYPES = {
     tesla: {
         name: "Tesla", cost: 500, range: 180, damage: 9, fireRate: 45, color: '#f1c40f', projSpeed: 0, projType: 'lightning', chain: 2,
         upgrades: [
-            { name: "High Voltage", cost: 650, damage: 18, chain: 3, desc: "+Dmg, +1 Chain" },
-            { name: "Superconductor", cost: 1500, fireRate: 30, range: 220, desc: "Faster shocks" },
+            { name: "High Voltage", cost: 650, damage: 20, chain: 3, desc: "+Dmg, +1 Chain" },
+            { name: "Superconductor", cost: 1500, damage:30, fireRate: 30, chain: 4, range: 220, desc: "+10dmg, +1 chain, +1.5x speed" },
             { name: "Storm Coil", cost: 3200, damage: 35, chain: 8, desc: "Chain lightning storm" }
         ]
     },
@@ -194,8 +211,8 @@ const TOWER_TYPES = {
         name: "Mortar Team", cost: 800, range: 500, damage: 100, fireRate: 240, color: '#7f8c8d', projSpeed: 5, projType: 'bomb', aoe: 40,
         upgrades: [
             { name: "Rapid Loader", cost: 600, fireRate: 180, desc: "Faster Reload" },
-            { name: "Heavy Shells", cost: 2000, damage: 200, aoe: 60, desc: "2x Dmg & 1.5x AoE" },
-            { name: "Nuke Shell", cost: 4500, range: 600, damage: 500, aoe: 160, desc: "Map wiper" }
+            { name: "Heavy Shells", cost: 2250, damage: 175, aoe: 60, desc: "1.75x Dmg & 1.5x AoE" },
+            { name: "Nuke Shell", cost: 5000, range: 600, damage: 300, aoe: 160, desc: "Map wiper" }
         ]
     },
     // MAP 3 (LAB)
@@ -203,7 +220,7 @@ const TOWER_TYPES = {
         name: "Chemist", cost: 550, range: 150, damage: 5, fireRate: 180, color: '#009432', projSpeed: 8, projType: 'acid', aoe: 60, slow: 0.5,
         upgrades: [
             { name: "Corrosive", cost: 500, damage: 10, aoe: 80, desc: "Stronger Poison" },
-            { name: "Sticky Goo", cost: 1500, damage: 15, fireRate: 120, slow: 0.4, desc: "Potent Mix" }, // Increased by 300
+            { name: "Sticky Goo", cost: 1500, damage: 15, fireRate: 120, slow: 0.4, desc: "Potent Mix" },
             { name: "Plague", cost: 3000, damage: 25, slow: 0.25, aoe: 150, desc: "Massive Infection" }
         ]
     },
@@ -216,20 +233,20 @@ const TOWER_TYPES = {
         ]
     },
     lab_laser: {
-        name: "Laser Trooper", cost: 450, range: 250, damage: 1, fireRate: 3, color: '#3498db', projSpeed: 99, projType: 'beam', rampSpeed: 1,
+        name: "Laser Trooper", cost: 450, range: 250, damage: 1, fireRate: 3, color: '#3498db', projSpeed: 99, projType: 'beam', rampSpeed: 0.5,
         buffEfficiency: 0.5,
         upgrades: [
-            { name: "Focus Lens", cost: 650, range: 300, rampSpeed: 2, desc: "Ramps 2x Faster" }, // +250
-            { name: "Gamma Ray", cost: 1450, armorPierce: true, rampSpeed: 3, desc: "Pierces Armor & 3x Ramp" }, // +250
-            { name: "Orbital Beam", cost: 3350, range: 800, rampSpeed: 5, desc: "Global Range & 5x Ramp" } // +250
+            { name: "Focus Lens", cost: 650, range: 300, rampSpeed: 1, desc: "Ramps 2x Faster" },
+            { name: "Gamma Ray", cost: 1450, armorPierce: true, rampSpeed: 1.5, desc: "Pierces Armor & 3x Ramp" },
+            { name: "Orbital Beam", cost: 3350, range: 800, rampSpeed: 2.5, desc: "Global Range & 5x Ramp" }
         ]
     },
     railgun: {
-        name: "Railgun", cost: 1200, range: 400, damage: 300, fireRate: 300, color: '#2c3e50', projSpeed: 0, projType: 'rail', armorPierce: true,
+        name: "Railgun", cost: 1200, range: 400, damage: 200, fireRate: 300, color: '#2c3e50', projSpeed: 0, projType: 'rail', armorPierce: true,
         upgrades: [
-            { name: "Capacitors", cost: 1300, fireRate: 240, desc: "Reloads in 4s" }, // Increased by 500
-            { name: "Heavy Slug", cost: 2500, damage: 400, range: 700, desc: "400 Damage + Greater Range" }, // Increased by 500
-            { name: "Gauss Cannon", cost: 4500, damage: 600, desc: "600 Damage" } // Increased by 500
+            { name: "Capacitors", cost: 1300, fireRate: 240, desc: "Reloads in 4s" },
+            { name: "Heavy Slug", cost: 2500, damage: 300, range: 700, desc: "300 Damage + Greater Range" },
+            { name: "Gauss Cannon", cost: 4500, damage: 500, desc: "500 Damage" }
         ]
     }
 };
@@ -293,12 +310,39 @@ function getWaveData(mapId, waveNum) {
     const w = (data, msg = null) => ({ data: data, msg: msg });
     // MAP 1
     if (mapId === 1) {
-        if (waveNum <= 9) return w([['walker', 5 + waveNum*2, 60], ['runner', Math.floor(waveNum/2), 80]]);
-        if (waveNum === 10) return w([['tank', 2, 150], ['walker', 20, 30]], "Warning: Heavily Armored Tanks!");
-        if (waveNum <= 20) return w([['tank', Math.floor(waveNum/2), 100], ['runner', 20, 30]]);
-        if (waveNum <= 30) return w([['carrier', 1 + Math.floor((waveNum-20)/3), 300], ['tank', 10, 80]]);
-        return w([['boss', 1 + Math.floor((waveNum-30)/2), 200], ['carrier', 5, 200], ['mini_carrier', 10, 100]], "BOSS WAVE!");
-    } 
+        if (waveNum === 1) return w([['walker', 10, 40]], "Welcome to the Grasslands.");
+        if (waveNum === 2) return w([['walker', 12, 40],['runner',8,30]]);
+        if (waveNum === 3) return w([['walker', 20, 40],['runner',15,30]]);
+        if (waveNum === 4) return w([['runner', 35, 25]], "Rush incoming!");
+        if (waveNum === 5) return w([['walker', 20, 30],['tank',3,40]], "Heavy Armor Detected.");
+        if (waveNum === 6) return w([['walker', 30, 25], ['tank', 5, 50]]);
+        if (waveNum === 7) return w([['runner', 40, 20]]);
+        if (waveNum === 8) return w([['tank', 10, 60], ['walker', 20, 30]]);
+        if (waveNum === 9) return w([['walker', 50, 15], ['runner', 15, 20]]);
+        if (waveNum === 10) return w([['boss', 1, 100], ['runner', 20, 30]], "BOSS WAVE");
+        if (waveNum === 11) return w([['tank', 15, 50]]);
+        if (waveNum === 12) return w([['walker', 60, 15], ['tank', 5, 60]]);
+        if (waveNum === 13) return w([['carrier', 1, 200], ['runner', 30, 20]], "Carrier: Spawns enemies on death!");
+        if (waveNum === 14) return w([['carrier', 2, 200], ['tank', 10, 50]]);
+        if (waveNum === 15) return w([['boss', 2, 150], ['walker', 30, 20]], "Double Trouble.");
+        if (waveNum === 16) return w([['runner', 60, 10]], "Hold the line!");
+        if (waveNum === 17) return w([['tank', 25, 40]]);
+        if (waveNum === 18) return w([['carrier', 4, 150], ['walker', 40, 20]]);
+        if (waveNum === 19) return w([['tank', 15, 40], ['runner', 40, 15]]);
+        if (waveNum === 20) return w([['boss', 3, 150], ['tank', 10, 60]], "Tri-Boss Assault");
+        if (waveNum === 21) return w([['carrier', 6, 120]]);
+        if (waveNum === 22) return w([['runner', 80, 8]]);
+        if (waveNum === 23) return w([['tank', 40, 30]]);
+        if (waveNum === 24) return w([['carrier', 5, 120], ['tank', 20, 40]]);
+        if (waveNum === 25) return w([['boss', 1, 100], ['carrier', 5, 100], ['tank', 20, 50]]);
+        if (waveNum === 26) return w([['walker', 100, 10]]);
+        if (waveNum === 27) return w([['tank', 50, 25]]);
+        if (waveNum === 28) return w([['runner', 100, 5]]);
+        if (waveNum === 29) return w([['carrier', 10, 100], ['boss', 2, 100]]);
+        if (waveNum <= 39) return w([['boss', 3, 150], ['carrier', 8, 80], ['tank', 30, 40]]);
+
+        return w([['carrier', 25, 80]], "FINAL WAVE: SURVIVE!");
+    }
     // MAP 2
     else if (mapId === 2) {
         if (waveNum === 1) return w([['walker', 12, 60]], "The dead rise...");
@@ -330,29 +374,64 @@ function getWaveData(mapId, waveNum) {
         if (waveNum === 19) return w([['vampire',5,40],['tank',10,30],['boss',20,20]]);
         if (waveNum === 20) return w([['vampire',12,30],['necromancer',1,30]],"The dead are awakening. The necromancer!");
         if (waveNum === 21) return w([['tank',50,20]]);
+        if (waveNum === 22) return w([['tank', 25, 40],['vampire',20,40],['boss', 15, 40]]);
+        if (waveNum === 23) return w([['necromancer',4,50]]);
+        if (waveNum === 24) {
+            let wave = [];
+            for(let i=0; i<15; i++) {
+                wave.push(['vampire', 1, 20]);
+                wave.push(['tank', 1, 20]);
+                wave.push(['boss', 1, 20]);
+            }
+            return w(wave,"These guys are dangerous.");
+        }
+        if (waveNum === 25) return w([['vampire',50,20]]);
+        if (waveNum === 26) return w([['necromancer',3,30],['tank',10,30],['boss',10,30]]);
+        if (waveNum === 27) return w([['necromancer', 10, 40]]);
+        if (waveNum === 28) {
+            let wave = [];
+            for(let i=0; i<5; i++) {
+                wave.push(['vampire', 5, 20]);
+                wave.push(['tank', 10, 20]);
+                wave.push(['boss', 15, 20]);
+            }
+            return w(wave,"These guys are dangerous.");
+        }
+        if (waveNum === 29) return w([['vampire',40,20],['boss',40,20]]);
+        if (waveNum === 30) return w([['necromancer', 30, 40]], "Final wave!");
     }
     // MAP 3 (Lab)
     else {
-        if (waveNum === 1) return w([['walker', 10, 80]], "Security Breach Detected"); 
-        if (waveNum <= 3) return w([['walker', 20, 60], ['runner', 3, 80]]);
-        
-        // Wave 5: Just walkers/runners, removed Scientists
-        if (waveNum <= 5) return w([['walker', 30, 40], ['runner', 12, 40]]); 
-        
-        // Mid Game: Introduce Scientists at Wave 6
+        if (waveNum === 1) return w([['walker', 10, 80]], "Security Breach Detected."); 
+        if (waveNum === 2) return w([['walker', 15, 60], ['runner', 5, 80]]);
+        if (waveNum === 3) return w([['walker', 20, 50], ['runner', 10, 60]]);
+        if (waveNum === 4) return w([['runner', 25, 40]], "Fast movers approaching!"); 
+        if (waveNum === 5) return w([['walker', 30, 30], ['tank', 2, 100]], "Armored Security detected.");
         if (waveNum === 6) return w([['mutant', 1, 600], ['scientist', 2, 150], ['walker', 15, 30]], "Scientists detected: Immune to basic attacks?"); 
-        
-        if (waveNum <= 10) return w([['mutant', 2, 400], ['scientist', 4, 120], ['runner', 25, 25]]);
-        
-        // Late Game: Heavy Armor & Regen
-        if (waveNum <= 15) return w([['tank', 15, 80], ['mutant', 5, 200], ['scientist', 8, 80]], "Shields Active: Use rapid fire!");
-        if (waveNum <= 20) return w([['carrier', 5, 250], ['mutant', 10, 150], ['necromancer', 2, 400]]);
-        
-        // Endgame: Total Chaos
-        if (waveNum <= 25) return w([['boss', 3, 200], ['mutant', 20, 100], ['scientist', 15, 60]]);
-        
-        // Final Wave
-        return w([['boss', 10, 100], ['mutant', 30, 50], ['carrier', 10, 100]], "TOTAL CONTAINMENT FAILURE");
+        if (waveNum === 7) return w([['scientist', 5, 100], ['runner', 15, 40]]);
+        if (waveNum === 8) return w([['mutant', 3, 200], ['walker', 20, 30]], "Mutants: They regenerate!");
+        if (waveNum === 9) return w([['scientist', 8, 80], ['tank', 5, 100]]);
+        if (waveNum === 10) return w([['boss', 1, 200], ['scientist', 10, 60]], "BOSS: The Director");
+        if (waveNum === 11) return w([['tank', 15, 60], ['mutant', 2, 200]]);
+        if (waveNum === 12) return w([['mutant', 6, 150], ['scientist', 10, 60]]);
+        if (waveNum === 13) return w([['carrier', 1, 300], ['runner', 20, 30]], "Carrier: Spawns subjects on death.");
+        if (waveNum === 14) return w([['carrier', 2, 250], ['tank', 10, 50]]);
+        if (waveNum === 15) return w([['runner', 50, 20], ['scientist', 5, 100]], "Energy Shields Active: Use rapid fire!");
+        if (waveNum === 16) return w([['necromancer', 1, 300], ['walker', 40, 20]], "Necromancer: Raising the dead!");
+        if (waveNum === 17) return w([['boss', 2, 200], ['mutant', 10, 100]]);
+        if (waveNum === 18) return w([['scientist', 20, 50], ['carrier', 3, 200]]);
+        if (waveNum === 19) return w([['necromancer', 2, 300], ['tank', 20, 40]]);
+        if (waveNum === 20) return w([['boss', 2, 200], ['carrier', 2, 200], ['necromancer', 1, 300]], "Sector 4 Collapse.");
+        if (waveNum === 21) return w([['mutant', 20, 80], ['scientist', 15, 60]]);
+        if (waveNum === 22) return w([['runner', 80, 10], ['tank', 10, 50]]);
+        if (waveNum === 23) return w([['carrier', 6, 150], ['necromancer', 2, 300]]);
+        if (waveNum === 24) return w([['tank', 40, 30], ['scientist', 20, 40]]);
+        if (waveNum === 25) return w([['boss', 4, 150], ['mutant', 15, 80]], "Enhanced Shields Detected!");
+        if (waveNum === 26) return w([['necromancer', 4, 250], ['walker', 50, 10]]);
+        if (waveNum === 27) return w([['carrier', 10, 120], ['scientist', 20, 40]]);
+        if (waveNum === 28) return w([['boss', 5, 150], ['tank', 30, 30]]);
+        if (waveNum === 29) return w([['mutant', 40, 50], ['necromancer', 3, 200]]);
+        return w([['boss', 10, 100], ['carrier', 25, 80], ['necromancer', 10, 200]], "TOTAL CONTAINMENT FAILURE");
     }
 }
 
@@ -405,7 +484,7 @@ function createParticles(x, y, color, count = 5) {
 
 function createSplatter(x, y, size, color) {
     gameState.splatters.push({
-        x: x, y: y, size: size, color: color, life: 600 // Lasts 10 seconds
+        x: x, y: y, size: size, color: color, life: 600
     });
 }
 
@@ -424,7 +503,6 @@ function drawPath(mapConfig) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
-    // Helper to draw one layer of the path
     const drawLayer = (width, color) => {
         ctx.lineWidth = width;
         ctx.strokeStyle = color;
@@ -432,7 +510,6 @@ function drawPath(mapConfig) {
         ctx.moveTo(points[0].x, points[0].y);
         
         for (let i = 0; i < points.length - 1; i++) {
-            // Check if this segment is a teleport gap
             let isTeleportGap = false;
             if (mapConfig.teleporters) {
                 for(let t of mapConfig.teleporters) {
@@ -441,9 +518,9 @@ function drawPath(mapConfig) {
             }
             
             if (isTeleportGap) {
-                ctx.stroke();     // Draw what we have
-                ctx.beginPath();  // Start new line
-                ctx.moveTo(points[i+1].x, points[i+1].y); // Skip to next point
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(points[i+1].x, points[i+1].y);
             } else {
                 ctx.lineTo(points[i+1].x, points[i+1].y);
             }
@@ -451,15 +528,14 @@ function drawPath(mapConfig) {
         ctx.stroke();
     };
 
-    drawLayer(44, mapConfig.pathColor); // Outer border
-    drawLayer(36, mapConfig.pathInner); // Inner road
+    drawLayer(44, mapConfig.pathColor);
+    drawLayer(36, mapConfig.pathInner);
 }
 
 function isValidPlacement(x, y) {
     if (x < 20 || x > INTERNAL_WIDTH - 20 || y < 20 || y > INTERNAL_HEIGHT - 20) return false;
     const points = MAPS[gameState.mapLevel].points;
     for (let i = 0; i < points.length - 1; i++) {
-        // Skip segments that are teleport jumps
         let isTeleport = false;
         if (MAPS[gameState.mapLevel].teleporters) {
             for(let t of MAPS[gameState.mapLevel].teleporters) {
@@ -536,6 +612,7 @@ class Enemy {
         this.poisoned = 0;
         this.poisonTick = 0;
         this.poisonDmg = 0;
+        this.isBuffedByScientist = false;
     }
 
     update() {
@@ -547,7 +624,6 @@ class Enemy {
             return;
         }
 
-        // Teleport Logic
         if (gameState.mapLevel === 3 && this.teleportCooldown === 0) {
             const teleporters = MAPS[3].teleporters;
             for(let t of teleporters) {
@@ -563,18 +639,16 @@ class Enemy {
         }
         if(this.teleportCooldown > 0) this.teleportCooldown--;
 
-        // Poison Damage
         if (this.poisoned > 0) {
-            this.poisoned--; // Decrement duration
+            this.poisoned--;
             
-            this.poisonTick--; // Decrement damage timer independently
+            this.poisonTick--;
             if (this.poisonTick <= 0) { 
                 this.takeDamage(this.poisonDmg, true, null); 
                 createParticles(this.x, this.y, '#009432', 1);
-                this.poisonTick = 60; // Reset tick to 1 second
+                this.poisonTick = 60;
             }
         } else {
-            // Reset tick so if they get poisoned again, it hurts immediately
             this.poisonTick = 0; 
         }
 
@@ -623,8 +697,15 @@ class Enemy {
         }
         if (this.typeKey === 'scientist') {
              gameState.enemies.forEach(e => {
-                 if (e !== this && Math.hypot(e.x - this.x, e.y - this.y) < 100) {
-                    //
+                 if (e !== this && !e.isBuffedByScientist && Math.hypot(e.x - this.x, e.y - this.y) < 100) {
+                    e.baseSpeed *= 1.10; 
+                    if (e.speed > 0) e.speed = e.baseSpeed;
+                    const healthBonus = Math.floor(e.maxHp * 0.10);
+                    e.maxHp += healthBonus;
+                    e.hp += healthBonus;
+                    e.armor += 20;
+                    e.isBuffedByScientist = true;
+                    createParticles(e.x, e.y, '#00ffff', 5);
                  }
              });
         }
@@ -654,7 +735,6 @@ class Enemy {
         ctx.save();
         ctx.translate(this.x, this.y);
         
-        // HEALTH BAR
         if (this.hp < this.maxHp) {
             const pct = this.hp / this.maxHp;
             ctx.fillStyle = 'red';
@@ -666,10 +746,7 @@ class Enemy {
             ctx.strokeRect(-12, -this.radius - 10, 24, 4);
         }
 
-        // --- SHIELD DRAWING LOGIC (Updated) ---
         if (this.isAbsorptive && this.absorbStacks > 0) {
-            // If stacks > 5, it's an Enhanced Shield (Orange)
-            // Otherwise, it's a Standard Shield (Cyan)
             const shieldColor = (this.absorbStacks > 5) ? '#e67e22' : '#00ffff';
             
             ctx.shadowBlur = 10; 
@@ -683,7 +760,6 @@ class Enemy {
             
             ctx.shadowBlur = 0;
         }
-        // --------------------------------------
 
         ctx.fillStyle = this.color;
         if (this.typeKey === 'vampire') ctx.fillStyle = '#800000'; 
@@ -768,7 +844,6 @@ class Tower {
     }
 
     update() {
-        // BUFF LOGIC (Trumpeter)
         if (this.projType === 'buff') {
             gameState.towers.forEach(t => {
                 if (t !== this && t.projType !== 'buff') {
@@ -809,7 +884,6 @@ class Tower {
         this.target = bestTarget;
         
         if (this.target) {
-            // RAILGUN CHARGE LOGIC
             if (this.projType === 'rail' && this.cooldown <= 60 && this.cooldown > 0) {
                 const dx = this.target.x - this.x;
                 const dy = this.target.y - this.y;
@@ -828,7 +902,6 @@ class Tower {
                     });
                 }
             }
-            // Standard Aiming
             else if (this.cooldown <= 0 || this.projType === 'beam') {
                 const dx = this.target.x - this.x;
                 const dy = this.target.y - this.y;
@@ -852,7 +925,6 @@ class Tower {
     }
 
     shoot() {
-        // CHANGED: Calculate buff amount, halve it if it's a Laser/Beam
         let buffDamage = (this.buffs ? (this.buffs.damage || 0) : 0);
         buffDamage = Math.floor(buffDamage * this.buffEfficiency);
 
@@ -861,7 +933,6 @@ class Tower {
 
         AudioSys.playShoot(this.projType);
 
-        // --- 1. RAILGUN LOGIC ---
         if (this.projType === 'rail') {
             const endX = this.x + Math.cos(this.angle) * this.range;
             const endY = this.y + Math.sin(this.angle) * this.range;
@@ -886,7 +957,6 @@ class Tower {
             return; 
         }
         
-        // --- 2. BEAM/LASER LOGIC ---
         if (this.projType === 'beam') {
             let rampMultiplier = Math.pow(2, this.laserTime / 60); 
             let dmg = this.damage * rampMultiplier; 
@@ -894,13 +964,11 @@ class Tower {
             return; 
         }
 
-        // --- 3. LIGHTNING LOGIC ---
         if (this.projType === 'lightning') {
             this.createLightning(this.target, this.chain);
             return;
         }
 
-        // --- 4. STANDARD PROJECTILE LOGIC ---
         const muzzleLen = 20;
         const mx = this.x + Math.cos(this.angle) * muzzleLen;
         const my = this.y + Math.sin(this.angle) * muzzleLen;
@@ -974,7 +1042,6 @@ class Tower {
         ctx.rotate(this.angle);
         ctx.fillStyle = '#111';
 
-        // --- BARREL DRAWING LOGIC ---
         if (this.projType === 'flame') {
             ctx.fillStyle = '#c0392b';
             ctx.fillRect(0, -6, 25, 12);
@@ -988,13 +1055,11 @@ class Tower {
             ctx.fillStyle = '#2980b9';
             ctx.fillRect(0, -3, 28, 6);
         } else if (this.projType === 'acid') {
-             // REMOVED 'buff' from here
              ctx.fillStyle = this.color;
              ctx.fillRect(0, -6, 20, 12); 
         } else if (this.projType === 'buff') {
-            // TRUMPETER: Do nothing (No barrel, just the base)
+            //no barrel for trumpeter
         } else {
-            // Standard Bullet Barrel
             ctx.fillRect(0, -4, 22, 8);
         }
 
@@ -1024,13 +1089,12 @@ class Puddle {
         this.life = duration;
         this.maxLife = duration;
         this.radius = radius;
-        this.slowFactor = slowFactor; // e.g., 0.5 for 50% slow
+        this.slowFactor = slowFactor;
     }
 
     update() {
         this.life--;
         
-        // Bubbling effect
         if (Math.random() < 0.1) {
             gameState.particles.push({
                 x: this.x + (Math.random() - 0.5) * this.radius,
@@ -1039,13 +1103,9 @@ class Puddle {
             });
         }
 
-        // Apply effects to enemies in range
         gameState.enemies.forEach(enemy => {
             if (Math.hypot(enemy.x - this.x, enemy.y - this.y) < this.radius + enemy.radius) {
-                // Apply Slow (Note: we need to modify Enemy class to support this reset logic)
                 enemy.speed = enemy.baseSpeed * this.slowFactor;
-                
-                // Refresh Poison status (so it lingers slightly after leaving)
                 enemy.poisoned = 60; 
                 enemy.poisonDmg = this.damage;
             }
@@ -1137,7 +1197,6 @@ class Projectile {
     hit(directHitEnemy) {
         this.active = false;
         
-        // Acid/Chemist Logic (Keep this)
         if (this.projType === 'acid') {
             let duration = 180; 
             let slowVal = 0.6; 
@@ -1151,32 +1210,28 @@ class Projectile {
             return; 
         }
 
-        // EXPLOSION LOGIC (Fixed)
         if (this.aoe > 0) {
             AudioSys.playExplosion();
 
-            // 1. Create Blast Visual
             gameState.particles.push({
                 type: 'blast',
                 x: this.x, 
                 y: this.y,
-                radius: 5,         // Start small
+                radius: 5,
                 maxRadius: this.aoe, 
-                expandRate: this.aoe / 10, // Expand quickly
+                expandRate: this.aoe / 10,
                 alpha: 1.0,
                 life: 20,
                 maxLife: 20,
                 color: '#e74c3c'
             });
 
-            // 2. Apply Damage to Area
             gameState.enemies.forEach(enemy => {
                 if (Math.hypot(enemy.x - this.x, enemy.y - this.y) <= this.aoe + enemy.radius) {
                     enemy.takeDamage(this.damage, this.armorPierce, this.sourceTower);
                 }
             });
-        } 
-        // Single Target Logic
+        }
         else {
             if(directHitEnemy) directHitEnemy.takeDamage(this.damage, this.armorPierce, this.sourceTower);
         }
@@ -1189,11 +1244,9 @@ class Projectile {
             ctx.fillStyle = '#009432';
             ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI * 2); ctx.fill();
         } else if (this.projType === 'bomb') {
-            // NEW: Draw a black bomb for Mortars
             ctx.fillStyle = '#000';
             ctx.beginPath(); ctx.arc(this.x, this.y, 5, 0, Math.PI * 2); ctx.fill();
         } else {
-            // Standard Bullets
             ctx.fillStyle = this.sourceTower.color;
             ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
         }
@@ -1222,23 +1275,19 @@ function updatePaletteUI() {
 }
 
 function setupWaveProgressUI() {
-    // FIX: Use gameState.mapLevel instead of passing mapId argument
-    // This prevents "ReferenceError: mapId is not defined"
     if (!gameState || !MAPS[gameState.mapLevel]) return;
     
     const mapId = gameState.mapLevel; 
     const totalWaves = MAPS[mapId].waves;
     const container = document.getElementById('wave-markers');
     
-    if (!container) return; // Safety check
+    if (!container) return;
     container.innerHTML = ''; 
     
-    // Create a marker for every 10th wave
     for (let w = 10; w <= totalWaves; w += 10) {
         const marker = document.createElement('div');
         marker.className = 'milestone-marker';
         
-        // Calculate percentage
         const pct = (w / totalWaves) * 100;
         marker.style.left = `${pct}%`;
         marker.setAttribute('data-wave', w);
@@ -1254,12 +1303,10 @@ function updateWaveProgressUI() {
     const totalWaves = MAPS[gameState.mapLevel].waves;
     const currentWave = gameState.wave;
     
-    // Update the Fill Bar
     const pct = Math.min(100, (currentWave / totalWaves) * 100);
     const fillBar = document.getElementById('wave-fill');
     if (fillBar) fillBar.style.width = `${pct}%`;
     
-    // Update Markers
     const markers = document.querySelectorAll('.milestone-marker');
     markers.forEach(m => {
         const markerWave = parseInt(m.getAttribute('data-wave'));
@@ -1278,13 +1325,9 @@ function updateUpgradePanel() {
     document.getElementById('upg-title').innerText = t.name;
     document.getElementById('upg-kills').innerText = t.kills;
 
-    // --- DAMAGE DISPLAY ---
     let dmgDisplay = Math.floor(t.damage);
     
-    // Check for buffs
     if (t.buffs && t.buffs.damage > 0) {
-        // Calculate the ACTUAL bonus received (Efficiency check)
-        // Lab Laser has efficiency 0.5, so a +10 buff becomes +5
         const effectiveBonus = Math.floor(t.buffs.damage * t.buffEfficiency);
         
         if (effectiveBonus > 0) {
@@ -1293,11 +1336,9 @@ function updateUpgradePanel() {
     }
     document.getElementById('upg-dmg').innerHTML = dmgDisplay;
 
-    // --- RANGE DISPLAY ---
     let rngDisplay = t.range;
     
     if (t.buffs && t.buffs.range > 0) {
-        // Calculate ACTUAL range bonus (Efficiency check)
         const effectiveRangeBonus = Math.floor(t.buffs.range * t.buffEfficiency);
         
         if (effectiveRangeBonus > 0) {
@@ -1306,10 +1347,8 @@ function updateUpgradePanel() {
     }
     document.getElementById('upg-rng').innerHTML = rngDisplay; 
     
-    // --- SPEED DISPLAY ---
     document.getElementById('upg-spd').innerText = (60/t.fireRate).toFixed(1) + "/s";
     
-    // --- TYPE/PIERCE DISPLAY ---
     let typeText = t.armorPierce ? "AP" : "Normal";
     if (!t.armorPierce && t.buffs && t.buffs.pierce) {
         typeText += ` <span style="color:#f1c40f; font-weight:bold;">(+AP)</span>`;
@@ -1318,7 +1357,6 @@ function updateUpgradePanel() {
 
     document.getElementById('sell-price').innerText = Math.floor(t.totalSpent * 0.7);
 
-    // --- BUTTON LOGIC ---
     const typeDef = TOWER_TYPES[t.typeKey];
     const btn = document.getElementById('upgrade-action-btn');
     
@@ -1478,12 +1516,10 @@ function handleCanvasClick(e) {
 function spawnEnemy(type, x, y, pathIndex) {
     const e = new Enemy(type, x, y, pathIndex);
 
-    // MAP 1 LOGIC
     if (gameState.wave >= 25 && gameState.mapLevel === 1) {
         if (Math.random() < 0.2) e.isAbsorptive = true;
     }
     
-    // MAP 2 LOGIC
     if (gameState.mapLevel === 2 && gameState.wave >= 15) {
         let shieldProb = 0.2;
 
@@ -1505,33 +1541,26 @@ function spawnEnemy(type, x, y, pathIndex) {
         }
     }
 
-    // MAP 3 LOGIC
     if (gameState.mapLevel === 3 && gameState.wave >= 15) {
         let shieldProb = 0.2; 
         
-        // 1. Calculate Base Shield Probability
         if (gameState.wave >= 30) {
-            shieldProb = 1.0; // 100% Chance on Wave 30+
+            shieldProb = 1.0;
         } else if (gameState.wave < 25) {
-            // Scale from 20% to 80% (Waves 15-24)
             shieldProb = 0.2 + ((gameState.wave - 15) / 10) * 0.6;
         } else {
-            shieldProb = 0.8; // Cap at 80% for Waves 25-29
+            shieldProb = 0.8;
         }
 
-        // 2. Apply Shield
         if (Math.random() < shieldProb) {
             e.isAbsorptive = true;
-            e.absorbStacks = 5; // Standard Shield HP
+            e.absorbStacks = 5;
 
-            // 3. Enhanced Shield Logic (Wave 25+)
             if (gameState.wave >= 25) {
-                // Wave 30+: 1 in 4 chance (25%)
-                // Wave 25-29: 1 in 5 chance (20%)
                 const enhancedProb = (gameState.wave >= 30) ? 0.25 : 0.2;
 
                 if (Math.random() < enhancedProb) {
-                    e.absorbStacks = 10; // Enhanced Shield HP
+                    e.absorbStacks = 10;
                 }
             }
         }
@@ -1735,11 +1764,14 @@ function endWave() {
     
     if (gameState.wave === mapConfig.waves) {
         document.getElementById('victory-screen').classList.remove('hidden');
+        localStorage.removeItem('zombieDefenseSave');
     } else {
         let bonus = 100 + (gameState.wave * 15);
         if (gameState.mapLevel === 3 && gameState.wave == 1) {bonus = 150}
         gameState.money += bonus;
         showNotification(`Cleared! +$${bonus}`, "#2ecc71");
+        
+        saveGame(); 
     }
 }
 
@@ -1751,19 +1783,15 @@ function gameLoop() {
 }
 
 function update() {
-    // 1. RESET ALL ENEMIES TO BASE SPEED
     gameState.enemies.forEach(enemy => {
         enemy.speed = enemy.baseSpeed;
     });
 
-    // 2. RESET ALL TOWER BUFFS EVERY FRAME
     gameState.towers.forEach(t => {
-        // CHANGED: Reset 'range' instead of 'aoe'
         t.buffs = { damage: 0, pierce: false, range: 0 }; 
     });
 
     if (gameState.isWaveActive) {
-        // ... (rest of wave logic is unchanged)
         gameState.waveFrameTimer++;
         if (gameState.waveQueue.length > 0) {
             const nextEnemy = gameState.waveQueue[0];
@@ -1777,16 +1805,11 @@ function update() {
         }
     }
     
-    // ... (rest of function is the same, just ensure you paste the full function if replacing) ...
-    // Or just manually update that one reset line above.
-    
-    // Puddles
     for (let i = gameState.puddles.length - 1; i >= 0; i--) {
         gameState.puddles[i].update();
         if (gameState.puddles[i].life <= 0) gameState.puddles.splice(i, 1);
     }
 
-    // Enemies
     for (let i = gameState.enemies.length - 1; i >= 0; i--) {
         const enemy = gameState.enemies[i];
         enemy.update();
@@ -1822,17 +1845,14 @@ function update() {
         }
     }
 
-    // Towers
     gameState.towers.forEach(tower => tower.update());
 
-    // Projectiles
     for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
         const proj = gameState.projectiles[i];
         proj.update();
         if (!proj.active) gameState.projectiles.splice(i, 1);
     }
-    
-    // Particles & Splatters (Keep existing code)
+
     for (let i = gameState.particles.length - 1; i >= 0; i--) {
         const p = gameState.particles[i];
         if (p.type === 'blast') {
@@ -1862,6 +1882,7 @@ function update() {
 
 function endGame(victory) {
     gameState.gameOver = true;
+    localStorage.removeItem('zombieDefenseSave');
     if (victory) {
         document.getElementById('victory-screen').classList.remove('hidden');
     } else {
@@ -1880,7 +1901,6 @@ function render() {
         ctx.fillRect(800, 500, 30, 50); ctx.fillRect(790, 540, 50, 10);
     }
     
-    // Map 3 Decor (Lab)
     if (gameState.mapLevel === 3) {
         ctx.fillStyle = 'rgba(0, 150, 255, 0.5)'; 
         const entryPt = mapConfig.points[3];
@@ -1893,33 +1913,24 @@ function render() {
         ctx.strokeStyle = '#fff'; ctx.stroke();
     }
 
-    // 1. DRAW PATH (Now drawn BEFORE splatters)
     drawPath(mapConfig);
 
-    // 2. DRAW SPLATTERS (Now drawn ON TOP of path)
     gameState.splatters.forEach(s => {
-        // Reduced alpha to 0.7 so you can slightly see the path through the blood
         ctx.globalAlpha = Math.min(0.7, s.life / 100); 
         ctx.fillStyle = s.color;
         ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
         ctx.globalAlpha = 1.0;
     });
 
-    // 3. DRAW PUDDLES (Using Offscreen Canvas to prevent overlap stacking)
-    // Clear the offscreen canvas
     puddleCtx.clearRect(0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT);
     
-    // Draw all puddles onto the offscreen canvas first
-    // They will merge into a single layer of shapes
     gameState.puddles.forEach(p => p.draw(puddleCtx));
     
-    // Draw the entire offscreen canvas onto the main screen with low opacity
     ctx.save();
-    ctx.globalAlpha = 0.4; // CHANGED: This controls the visibility of the pool (0.4 = very transparent)
+    ctx.globalAlpha = 0.4;
     ctx.drawImage(puddleCanvas, 0, 0);
     ctx.restore();
 
-    // 4. DRAW REMAINING ENTITIES
     gameState.towers.forEach(tower => tower.draw(ctx));
     gameState.enemies.forEach(enemy => enemy.draw(ctx));
     gameState.projectiles.forEach(proj => proj.draw(ctx));
@@ -1998,6 +2009,128 @@ function render() {
         ctx.stroke();
     }
 }
+
+// --- SAVE / LOAD SYSTEM ---
+
+function saveGame() {
+    if (gameState.gameOver) {
+        localStorage.removeItem('zombieDefenseSave');
+        return;
+    }
+
+    const saveData = {
+        mapLevel: gameState.mapLevel,
+        money: gameState.money,
+        lives: gameState.lives,
+        wave: gameState.wave,
+        towers: gameState.towers.map(t => ({
+            typeKey: t.typeKey,
+            x: t.x,
+            y: t.y,
+            level: t.level,
+            damage: t.damage,
+            range: t.range,
+            fireRate: t.fireRate,
+            aoe: t.aoe,
+            armorPierce: t.armorPierce,
+            chain: t.chain,
+            rampSpeed: t.rampSpeed,
+            slow: t.slow,
+            totalSpent: t.totalSpent,
+            kills: t.kills,
+            buffEfficiency: t.buffEfficiency
+        }))
+    };
+
+    localStorage.setItem('zombieDefenseSave', JSON.stringify(saveData));
+}
+
+function checkSaveGame() {
+    const saveString = localStorage.getItem('zombieDefenseSave');
+    if (saveString) {
+        const save = JSON.parse(saveString);
+        if (save && save.lives > 0) {
+            document.getElementById('save-wave-num').innerText = save.wave;
+            document.getElementById('save-map-num').innerText = save.mapLevel; 
+            
+            document.getElementById('start-screen').classList.add('hidden'); 
+            document.getElementById('continue-modal').classList.remove('hidden'); 
+            return true;
+        }
+    }
+    return false;
+}
+
+function loadGame() {
+    const saveString = localStorage.getItem('zombieDefenseSave');
+    if (!saveString) return;
+
+    const save = JSON.parse(saveString);
+
+    resetGame(save.mapLevel);
+
+    gameState.money = save.money;
+    gameState.lives = save.lives;
+    gameState.wave = save.wave;
+
+    gameState.towers = save.towers.map(tData => {
+        const newTower = new Tower(tData.x, tData.y, tData.typeKey);
+        
+        newTower.level = tData.level;
+        newTower.damage = tData.damage;
+        newTower.range = tData.range;
+        newTower.fireRate = tData.fireRate;
+        newTower.aoe = tData.aoe;
+        newTower.armorPierce = tData.armorPierce;
+        newTower.chain = tData.chain;
+        newTower.rampSpeed = tData.rampSpeed;
+        newTower.slow = tData.slow;
+        newTower.totalSpent = tData.totalSpent;
+        newTower.kills = tData.kills;
+        newTower.buffEfficiency = tData.buffEfficiency;
+        
+        return newTower;
+    });
+
+    document.getElementById('continue-modal').classList.add('hidden');
+    
+    setupWaveProgressUI(); 
+    updateUI();
+    showNotification("Game Loaded!", "#2ecc71");
+}
+
+function startNewGameFromModal() {
+    localStorage.removeItem('zombieDefenseSave');
+    document.getElementById('continue-modal').classList.add('hidden');
+    document.getElementById('start-screen').classList.remove('hidden');
+}
+
+function checkPatchNotes() {
+    const savedVersion = localStorage.getItem('zombieDefenseVersion');
+    
+    if (!savedVersion || savedVersion !== GAME_VERSION) {
+        document.getElementById('pn-version').innerText = "v" + GAME_VERSION;
+        document.getElementById('pn-content').innerHTML = PATCH_NOTES;
+        
+        document.getElementById('patch-notes-modal').classList.remove('hidden');
+        document.getElementById('start-screen').classList.add('hidden');
+        
+        localStorage.setItem('zombieDefenseVersion', GAME_VERSION);
+        return true;
+    }
+    return false;
+}
+
+function closePatchNotes() {
+    document.getElementById('patch-notes-modal').classList.add('hidden');
+    
+    if (checkSaveGame()) {
+        //skip
+    } else {
+        document.getElementById('start-screen').classList.remove('hidden');
+    }
+}
+
 // --- INIT ---
 
 function init() {
@@ -2007,18 +2140,20 @@ function init() {
     window.addEventListener('resize', handleResize);
     handleResize();
 
-    // Mouse Listeners (Desktop)
     if (!isMobile) {
         canvas.addEventListener('mousemove', handleMouseMove);
         canvas.addEventListener('click', handleCanvasClick);
     }
 
-    // Touch Listeners (Mobile Drag & Drop)
     setupTouchListeners();
-
     document.getElementById('start-wave-btn').addEventListener('click', startNextWave);
 
-    render();
+    const notesShown = checkPatchNotes();
+    if (!notesShown) {
+        checkSaveGame();
+    }
+
+    render(); 
 }
 
 window.addEventListener('load', function() {
