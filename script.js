@@ -8,7 +8,7 @@
  * +Other bug fixes/improvements
  */
 
-// --- VERSION CONTROL ---
+// VERSION CONTROL
 const GAME_VERSION = "3.2";
 
 const PATCH_NOTES = `
@@ -2158,4 +2158,5 @@ function init() {
 
 window.addEventListener('load', function() {
     init();
+
 });
