@@ -8,7 +8,7 @@
  * +Other bug fixes/improvements
  */
 
-// VERSION CONTROL
+// --- VERSION CONTROL ---
 const GAME_VERSION = "3.2";
 
 const PATCH_NOTES = `
@@ -233,12 +233,12 @@ const TOWER_TYPES = {
         ]
     },
     lab_laser: {
-        name: "Laser Trooper", cost: 450, range: 250, damage: 1, fireRate: 3, color: '#3498db', projSpeed: 99, projType: 'beam', rampSpeed: 0.5,
+        name: "Laser Trooper", cost: 450, range: 250, damage: 1, fireRate: 3, color: '#3498db', projSpeed: 99, projType: 'beam', rampSpeed: 0.6,
         buffEfficiency: 0.5,
         upgrades: [
-            { name: "Focus Lens", cost: 650, range: 300, rampSpeed: 1, desc: "Ramps 2x Faster" },
-            { name: "Gamma Ray", cost: 1450, armorPierce: true, rampSpeed: 1.5, desc: "Pierces Armor & 3x Ramp" },
-            { name: "Orbital Beam", cost: 3350, range: 800, rampSpeed: 2.5, desc: "Global Range & 5x Ramp" }
+            { name: "Focus Lens", cost: 650, range: 300, rampSpeed: 1.2, desc: "Ramps 2x Faster" },
+            { name: "Gamma Ray", cost: 1450, armorPierce: true, rampSpeed: 1.8, desc: "Pierces Armor & 3x Ramp" },
+            { name: "Orbital Beam", cost: 3350, range: 800, rampSpeed: 3, desc: "Global Range & 5x Ramp" }
         ]
     },
     railgun: {
@@ -703,7 +703,7 @@ class Enemy {
                     const healthBonus = Math.floor(e.maxHp * 0.10);
                     e.maxHp += healthBonus;
                     e.hp += healthBonus;
-                    e.armor += 20;
+                    e.armor += 5;
                     e.isBuffedByScientist = true;
                     createParticles(e.x, e.y, '#00ffff', 5);
                  }
@@ -785,6 +785,29 @@ class Enemy {
         
         ctx.beginPath(); ctx.arc(-4 + wobbleX, -4, 1, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(4 + wobbleX, -4, 1, 0, Math.PI * 2); ctx.fill();
+
+        if (this.isBuffedByScientist) {
+            ctx.save();
+            ctx.translate(this.radius * 0.8, this.radius * 0.8);
+            
+            ctx.fillStyle = '#3498db';
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, -8);
+            ctx.lineTo(6, 0);
+            ctx.lineTo(2, 0);
+            ctx.lineTo(2, 6);
+            ctx.lineTo(-2, 6);
+            ctx.lineTo(-2, 0);
+            ctx.lineTo(-6, 0);
+            ctx.closePath();
+            
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
         ctx.restore();
     }
 }
@@ -2158,5 +2181,4 @@ function init() {
 
 window.addEventListener('load', function() {
     init();
-
 });
