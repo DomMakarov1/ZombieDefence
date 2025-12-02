@@ -79,16 +79,50 @@
         <div id="tower-palette">
             <div id="palette-toggle" onclick="togglePalette()">▼</div>
             <div id="palette-container" style="display:flex; gap:10px;">
-                <!-- Filled dynamically by JS -->
             </div>
         </div>
 
         <div id="start-screen" class="modal">
-            <h1 style="color:#f1c40f;">Zombie Defence</h1>
-            <p>Defend the base from the undead!</p>
-            <button class="modal-btn" onclick="startGame(1)">Start Campaign</button>
-            <button class="modal-btn skip-btn" onclick="startGame(2)">Skip to Map 2</button>
-            <button class="modal-btn skip-btn" onclick="startGame(3)">Skip to Map 3</button>
+            <h1 style="color:#f1c40f; text-shadow: 0 0 20px rgba(241,196,15,0.5);">Zombie Defence</h1>
+            <p style="color:#aaa; font-style:italic;">Command. Defend. Survive.</p>
+            
+            <button class="modal-btn" onclick="openCampaignMenu()">Campaign</button>
+            
+            <button class="modal-btn skip-btn" style="background: #7f8c8d; font-size: 14px; margin-top: 30px;" onclick="resetProgress()">Reset Progress</button>
+        </div>
+
+        <div id="campaign-screen" class="modal hidden" style="background: rgba(10, 10, 15, 0.95);">
+            <h1 style="margin-bottom: 0;">Mission Select</h1>
+            
+            <div class="campaign-map-container">
+                <svg class="campaign-path" width="600" height="400">
+                    <path d="M 70 300 Q 100 100 230 100" stroke="#555" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="10, 10" id="path-1-2" />
+                    <path d="M 230 100 Q 380 100 380 300" stroke="#555" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="10, 10" id="path-2-3" />
+                    <path d="M 380 300 Q 500 300 530 100" stroke="#555" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="10, 10" id="path-3-4" />
+                </svg>
+
+                <div class="map-node locked" id="node-1" onclick="selectCampaignMap(1)" style="position: absolute; left: 40px; top: 270px;">
+                    <div class="node-icon" style="background: #27ae60;">🌿</div>
+                    <div class="node-label">Grasslands</div>
+                </div>
+
+                <div class="map-node locked" id="node-2" onclick="selectCampaignMap(2)" style="position: absolute; left: 200px; top: 70px;">
+                    <div class="node-icon" style="background: #2c3e50;">🪦</div>
+                    <div class="node-label">Cemetery</div>
+                </div>
+
+                <div class="map-node locked" id="node-3" onclick="selectCampaignMap(3)" style="position: absolute; left: 350px; top: 270px;">
+                    <div class="node-icon" style="background: #bdc3c7; color:#333;">🧪</div>
+                    <div class="node-label">The Lab</div>
+                </div>
+
+                <div class="map-node locked" id="node-4" onclick="selectCampaignMap(4)" style="position: absolute; left: 500px; top: 70px;">
+                    <div class="node-icon" style="background: #d35400;">🏜️</div>
+                    <div class="node-label">Canyon</div>
+                </div>
+            </div>
+
+            <button class="modal-btn" style="margin-top: 20px; background: #c0392b;" onclick="backToTitle()">Back</button>
         </div>
 
         <div id="game-over-screen" class="modal hidden">

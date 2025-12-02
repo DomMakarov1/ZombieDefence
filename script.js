@@ -144,6 +144,17 @@ const MAPS = {
         teleporters: [{ entry: 3, exit: 4 }],
         towers: ['chemist', 'trumpeter', 'lab_laser', 'railgun'], 
         waves: 30
+    },
+    4: {
+        name: "Dusty Canyon",
+        bgColor: "#e67e22",
+        pathColor: "#8d6e63",
+        pathInner: "#a1887f",
+        points: [
+            {x: 0, y: 360}, {x: 1280, y: 360}
+        ],
+        towers: ['sniper', 'bombardier', 'railgun', 'tesla'], 
+        waves: 30
     }
 };
 
@@ -179,7 +190,7 @@ const TOWER_TYPES = {
         upgrades: [
             { name: "Big Bertha", cost: 400, aoe: 100, damage: 40, desc: "Larger Explosion" },
             { name: "Cluster Bombs", cost: 1100, damage: 70, fireRate: 90, desc: "Deadly Payload" },
-            { name: "MOAB", cost: 2600, damage: 140, aoe: 180, fireRate: 160, desc: "Massive Ordnance" }
+            { name: "MOAB", cost: 2600, damage: 100, aoe: 140, fireRate: 120, desc: "Massive Ordnance" }
         ]
     },
     // MAP 2
@@ -208,9 +219,9 @@ const TOWER_TYPES = {
         ]
     },
     mortar: {
-        name: "Mortar Team", cost: 800, range: 500, damage: 100, fireRate: 240, color: '#7f8c8d', projSpeed: 5, projType: 'bomb', aoe: 40,
+        name: "Mortar Team", cost: 800, range: 500, damage: 100, fireRate: 300, color: '#7f8c8d', projSpeed: 5, projType: 'bomb', aoe: 40,
         upgrades: [
-            { name: "Rapid Loader", cost: 600, fireRate: 180, desc: "Faster Reload" },
+            { name: "Rapid Loader", cost: 600, fireRate: 240, desc: "Faster Reload" },
             { name: "Heavy Shells", cost: 2250, damage: 175, aoe: 60, desc: "1.75x Dmg & 1.5x AoE" },
             { name: "Nuke Shell", cost: 5000, range: 600, damage: 300, aoe: 160, desc: "Map wiper" }
         ]
@@ -276,6 +287,7 @@ puddleCanvas.height = INTERNAL_HEIGHT;
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 1000;
 
 let gameState = {
+    inMenu: true,
     mapLevel: 1,
     money: 150,
     lives: 20,
@@ -302,6 +314,7 @@ let gameState = {
     paletteCollapsed: false
 };
 
+let maxUnlockedLevel = 1;
 let gameLoopId = null;
 
 // --- Helper Functions ---
@@ -401,7 +414,7 @@ function getWaveData(mapId, waveNum) {
         if (waveNum === 30) return w([['necromancer', 30, 40]], "Final wave!");
     }
     // MAP 3 (Lab)
-    else {
+    else if (mapId === 3) {
         if (waveNum === 1) return w([['walker', 10, 80]], "Security Breach Detected."); 
         if (waveNum === 2) return w([['walker', 15, 60], ['runner', 5, 80]]);
         if (waveNum === 3) return w([['walker', 20, 50], ['runner', 10, 60]]);
@@ -432,6 +445,27 @@ function getWaveData(mapId, waveNum) {
         if (waveNum === 28) return w([['boss', 5, 150], ['tank', 30, 30]]);
         if (waveNum === 29) return w([['mutant', 40, 50], ['necromancer', 3, 200]]);
         return w([['boss', 10, 100], ['carrier', 25, 80], ['necromancer', 10, 200]], "TOTAL CONTAINMENT FAILURE");
+    }
+    else if (mapId === 4) {
+        if (waveNum === 1) return w([['runner', 10, 60]], "Canyon Run: Fast enemies ahead!");
+        if (waveNum === 2) return w([['runner', 20, 50]]);
+        if (waveNum === 3) return w([['walker', 10, 40], ['runner', 10, 40]]);
+        if (waveNum === 4) return w([['tank', 2, 120]], "Heavy Armor entering the pass.");
+        if (waveNum === 5) return w([['runner', 30, 30], ['tank', 3, 100]]);
+        
+        if (waveNum === 6) return w([['tank', 5, 80], ['bombardier', 0, 0]], "Use Railguns for lines!"); // Hint in text
+        if (waveNum === 7) return w([['carrier', 1, 250], ['runner', 20, 30]]);
+        if (waveNum === 8) return w([['mutant', 2, 200], ['tank', 5, 60]]);
+        if (waveNum === 9) return w([['runner', 50, 20]], "Stampede!");
+        if (waveNum === 10) return w([['boss', 2, 150], ['tank', 10, 60]], "Canyon Bosses");
+        
+        if (waveNum === 15) return w([['boss', 3, 150], ['carrier', 5, 150], ['mutant', 5, 100]]);
+        if (waveNum === 20) return w([['necromancer', 2, 300], ['tank', 20, 40], ['vampire', 20, 40]]);
+        
+        if (waveNum === 25) return w([['boss', 5, 150], ['tank', 40, 30]]);
+        
+        // Final Wave
+        return w([['boss', 10, 100], ['carrier', 20, 80], ['tank', 50, 30]], "THE FINAL STAND");
     }
 }
 
@@ -534,23 +568,42 @@ function drawPath(mapConfig) {
 
 function isValidPlacement(x, y) {
     if (x < 20 || x > INTERNAL_WIDTH - 20 || y < 20 || y > INTERNAL_HEIGHT - 20) return false;
-    const points = MAPS[gameState.mapLevel].points;
-    for (let i = 0; i < points.length - 1; i++) {
-        let isTeleport = false;
-        if (MAPS[gameState.mapLevel].teleporters) {
-            for(let t of MAPS[gameState.mapLevel].teleporters) {
-                if (i === t.entry) isTeleport = true;
+    if (gameState.mapLevel === 4) {
+        let isOnWall = false;
+        for (const w of gameState.walls) {
+            const wx = w.x - 20;
+            const wy = w.isTop ? w.y : w.y - w.height;
+            const wWidth = 40;
+            const wHeight = w.height;
+            if (x >= wx && x <= wx + wWidth && y >= wy && y <= wy + wHeight) {
+                isOnWall = true;
+                break;
             }
         }
-        if (isTeleport) continue;
+        if (!isOnWall) return false;
+    } 
+    else {
+        if (gameState.mapLevel === 4 && (y < 130 || y > 590)) return false; 
 
-        const p1 = points[i];
-        const p2 = points[i+1];
-        if (distToSegment(x, y, p1.x, p1.y, p2.x, p2.y) < 40) return false;
+        const points = MAPS[gameState.mapLevel].points;
+        for (let i = 0; i < points.length - 1; i++) {
+            let isTeleport = false;
+            if (MAPS[gameState.mapLevel].teleporters) {
+                for(let t of MAPS[gameState.mapLevel].teleporters) {
+                    if (i === t.entry) isTeleport = true;
+                }
+            }
+            if (isTeleport) continue;
+
+            const p1 = points[i];
+            const p2 = points[i+1];
+            if (distToSegment(x, y, p1.x, p1.y, p2.x, p2.y) < 40) return false;
+        }
     }
     for (const tower of gameState.towers) {
         if (Math.hypot(x - tower.x, y - tower.y) < 35) return false;
     }
+
     return true;
 }
 
@@ -616,7 +669,6 @@ class Enemy {
     }
 
     update() {
-
         const path = MAPS[gameState.mapLevel].points;
         const target = path[this.pathIndex + 1];
         if (!target) {
@@ -624,6 +676,7 @@ class Enemy {
             return;
         }
 
+        // --- 1. TELEPORT LOGIC ---
         if (gameState.mapLevel === 3 && this.teleportCooldown === 0) {
             const teleporters = MAPS[3].teleporters;
             for(let t of teleporters) {
@@ -639,9 +692,9 @@ class Enemy {
         }
         if(this.teleportCooldown > 0) this.teleportCooldown--;
 
+        // --- 2. POISON LOGIC ---
         if (this.poisoned > 0) {
             this.poisoned--;
-            
             this.poisonTick--;
             if (this.poisonTick <= 0) { 
                 this.takeDamage(this.poisonDmg, true, null); 
@@ -652,27 +705,76 @@ class Enemy {
             this.poisonTick = 0; 
         }
 
+        // --- 3. CALCULATE MOVEMENT VECTORS ---
         const dx = target.x - this.x;
         const dy = target.y - this.y;
         const dist = Math.hypot(dx, dy);
 
+        let moveX = (dx / dist) * this.speed;
+        let moveY = (dy / dist) * this.speed;
+
+        // --- 4: SQUARE-PATH WALL LOGIC ---
+        if (gameState.mapLevel === 4) {
+            const r = this.radius;
+            const pathY = 360; 
+
+            for (const w of gameState.walls) {
+                const wallStart = w.x - 20 - r;
+                const wallEnd = w.x + 20 + r;
+                const returnZoneEnd = wallEnd + 100;
+
+                const wallTipY = w.isTop 
+                    ? (w.y + w.height + r + 4) 
+                    : (w.y - w.height - r - 4);
+
+                if (this.x > wallStart && this.x < returnZoneEnd) {
+                    if (this.x < wallEnd) {
+                        let isDeepInWall = false;
+                        if (w.isTop) {
+                            if (this.y < wallTipY - 5) isDeepInWall = true;
+                        } else {
+                            if (this.y > wallTipY + 5) isDeepInWall = true;
+                        }
+
+                        if (isDeepInWall) {
+                            moveX = 0; 
+                            moveY = w.isTop ? this.speed : -this.speed;
+                        } else {
+                            this.y = wallTipY;
+                            moveX = this.speed;
+                            moveY = 0; 
+                        }
+                    }
+                    else {
+                        const distToPath = Math.abs(this.y - pathY);
+                        if (distToPath > 5) {
+                            moveX = 0; 
+                            moveY = (pathY > this.y) ? this.speed : -this.speed;
+                        } 
+                    }
+                }
+            }
+        }
+
+        // --- 5. APPLY MOVEMENT ---
         if (dist < this.speed) {
             this.x = target.x;
             this.y = target.y;
             this.pathIndex++;
         } else {
-            this.x += (dx / dist) * this.speed;
-            this.y += (dy / dist) * this.speed;
+            this.x += moveX;
+            this.y += moveY;
         }
+        
         this.wobble += 0.2;
 
+        // --- 6. SPECIAL ABILITIES ---
         if (this.typeKey === 'necromancer') {
             this.summonCooldown++;
-            if (this.summonCooldown > 60) { 
+            if (this.summonCooldown > 200) { 
                 this.summonCooldown = 0;
                 
                 let spawnIndex = this.pathIndex;
-                
                 if (spawnIndex < MAPS[gameState.mapLevel].points.length - 2) {
                      spawnIndex++; 
                 }
@@ -684,10 +786,10 @@ class Enemy {
                 const randomMinion = minions[Math.floor(Math.random() * minions.length)];
 
                 spawnEnemy(randomMinion, spawnX, spawnY, spawnIndex);
-                
                 createParticles(this.x, this.y, '#9b59b6', 15);
             }
         }
+
         if (this.typeKey === 'mutant') {
             this.regenTimer++;
             if (this.regenTimer > 120 && this.hp < this.maxHp) { 
@@ -695,6 +797,7 @@ class Enemy {
                 createParticles(this.x, this.y, '#00ff00', 1);
             }
         }
+
         if (this.typeKey === 'scientist') {
              gameState.enemies.forEach(e => {
                  if (e !== this && !e.isBuffedByScientist && Math.hypot(e.x - this.x, e.y - this.y) < 100) {
@@ -703,7 +806,7 @@ class Enemy {
                     const healthBonus = Math.floor(e.maxHp * 0.10);
                     e.maxHp += healthBonus;
                     e.hp += healthBonus;
-                    e.armor += 5;
+                    e.armor += 20;
                     e.isBuffedByScientist = true;
                     createParticles(e.x, e.y, '#00ffff', 5);
                  }
@@ -1288,12 +1391,36 @@ function updateUI() {
     }
 }
 
+function setGameUIVisibility(visible) {
+    const state = visible ? 'flex' : 'none';
+    const hud = document.getElementById('hud');
+    if (hud) hud.style.display = state;
+    
+    const palette = document.getElementById('tower-palette');
+    if (palette) palette.style.display = state;
+
+    const panel = document.getElementById('upgrade-panel');
+    if (panel) {
+        if (!visible) {
+            panel.style.display = 'none';
+            panel.classList.remove('active');
+        } else {
+            panel.style.display = ''; 
+        }
+    }
+}
+
 function updatePaletteUI() {
     const cards = document.querySelectorAll('.tower-card');
     cards.forEach(card => {
+        if (card.id === 'wall-card') return;
+
         card.classList.remove('selected');
         const type = card.getAttribute('data-type');
-        if (gameState.selectedTowerType === type) card.classList.add('selected');
+        
+        if (type && gameState.selectedTowerType === type) {
+            card.classList.add('selected');
+        }
     });
 }
 
@@ -1423,6 +1550,10 @@ function sellSelectedTower() {
 
 function selectTowerType(type) {
     if (isMobile) return; 
+    
+    gameState.placingWall = false;
+    updateWallUI();
+
     deselectTower();
     const cost = TOWER_TYPES[type].cost;
     
@@ -1433,6 +1564,7 @@ function selectTowerType(type) {
     } else {
         showNotification("Not enough cash!", "#c0392b");
     }
+
     updatePaletteUI();
 }
 
@@ -1468,6 +1600,7 @@ function setupPalette(mapId) {
     const container = document.getElementById('palette-container');
     container.innerHTML = ''; 
     const towerKeys = MAPS[mapId].towers;
+
     towerKeys.forEach(key => {
         const t = TOWER_TYPES[key];
         const div = document.createElement('div');
@@ -1496,6 +1629,25 @@ function setupPalette(mapId) {
         `;
         container.appendChild(div);
     });
+
+    if (mapId === 4) {
+        const div = document.createElement('div');
+        div.className = 'tower-card';
+        div.id = 'wall-card'; 
+        div.onclick = () => selectWallPlacement();
+        
+        const displayStyle = gameState.wallsAvailable > 0 ? 'flex' : 'none';
+
+        div.innerHTML = `
+            <div class="stock-badge" id="wall-stock" style="display: ${displayStyle};">${gameState.wallsAvailable}</div>
+            <div class="tower-icon" style="background: #7f8c8d; border: 2px solid #fff; border-radius: 4px;">🧱</div>
+            <div class="tower-info">
+                <div class="tower-name">Barricade</div>
+                <div class="tower-cost">Free</div>
+            </div>
+        `;
+        container.appendChild(div);
+    }
 }
 
 function handleCanvasClick(e) {
@@ -1503,6 +1655,37 @@ function handleCanvasClick(e) {
 
     const pos = getCanvasCoordinates(e.clientX, e.clientY);
     
+    if (gameState.placingWall) {
+        const isTop = pos.y < INTERNAL_HEIGHT / 2;
+        const wallY = isTop ? 120 : 600;
+        
+        let valid = true;
+        gameState.walls.forEach(w => {
+            if (Math.abs(w.x - pos.x) < 60) valid = false;
+        });
+
+        gameState.walls.forEach(w => {
+            if (w.isTop !== isTop && Math.abs(w.x - pos.x) < 60) valid = false;
+        });
+
+        if (valid && gameState.wallsAvailable > 0) {
+            gameState.walls.push({
+                x: pos.x,
+                y: wallY, 
+                isTop: isTop,
+                width: 40,
+                height: 384
+            });
+            gameState.wallsAvailable--;
+            gameState.placingWall = false;
+            createParticles(pos.x, wallY, '#5d4037', 15);
+            updateWallUI();
+        } else {
+            showNotification("Invalid Position", "#c0392b");
+        }
+        return;
+    }
+
     if (gameState.selectedTowerType) {
         const cost = TOWER_TYPES[gameState.selectedTowerType].cost;
         if (isValidPlacement(pos.x, pos.y) && gameState.money >= cost) {
@@ -1691,6 +1874,138 @@ function toggleSpeed() {
     btn.style.background = gameState.speedMultiplier === 2 ? '#e74c3c' : '#e67e22';
 }
 
+function selectWallPlacement() {
+    gameState.selectedTowerType = null;
+    updatePaletteUI();
+
+    if (gameState.placingWall) {
+        gameState.placingWall = false;
+    } else {
+        if (gameState.wallsAvailable > 0) {
+            deselectTower();
+            gameState.placingWall = true;
+        } else {
+        }
+    }
+    
+    // 3. Update Wall Button UI
+    updateWallUI();
+}
+
+function updateWallUI() {
+    const badge = document.getElementById('wall-stock');
+    if (badge) {
+        badge.innerText = gameState.wallsAvailable;
+        if (gameState.wallsAvailable > 0) {
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+    
+    const card = document.getElementById('wall-card');
+    if (card) {
+        if (gameState.placingWall) card.classList.add('selected');
+        else card.classList.remove('selected');
+    }
+}
+
+// --- CAMPAIGN PROGRESS SYSTEM ---
+
+function loadCampaignProgress() {
+    const saved = localStorage.getItem('zombieDefenseProgress');
+    if (saved) {
+        maxUnlockedLevel = parseInt(saved);
+    } else {
+        maxUnlockedLevel = 1;
+    }
+}
+
+function saveCampaignProgress(levelCompleted) {
+    const nextLevel = levelCompleted + 1;
+    if (nextLevel > maxUnlockedLevel && nextLevel <= 4) {
+        maxUnlockedLevel = nextLevel;
+        localStorage.setItem('zombieDefenseProgress', maxUnlockedLevel);
+        showNotification("New Map Unlocked!", "#2ecc71");
+    }
+}
+
+function resetProgress() {
+    if(confirm("Are you sure you want to lock all maps and reset progress?")) {
+        localStorage.removeItem('zombieDefenseProgress');
+        localStorage.removeItem('zombieDefenseSave');
+        maxUnlockedLevel = 1;
+        location.reload();
+    }
+}
+
+// --- CAMPAIGN MENU UI ---
+
+const CAMPAIGN_DETAILS = {
+    1: { name: "Grasslands", icon: "🌿", color: "#27ae60" },
+    2: { name: "Cemetery", icon: "🪦", color: "#2c3e50" },
+    3: { name: "The Lab", icon: "🧪", color: "#bdc3c7" },
+    4: { name: "Canyon", icon: "🏜️", color: "#d35400" }
+};
+
+function openCampaignMenu() {
+    loadCampaignProgress(); 
+    setGameUIVisibility(false);
+    
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('campaign-screen').classList.remove('hidden');
+    
+    for (let i = 1; i <= 4; i++) {
+        const node = document.getElementById(`node-${i}`);
+        const iconEl = node.querySelector('.node-icon');
+        const labelEl = node.querySelector('.node-label');
+        
+        node.className = 'map-node'; 
+        
+        if (i <= maxUnlockedLevel) {
+            const details = CAMPAIGN_DETAILS[i];
+            iconEl.innerText = details.icon;
+            iconEl.style.background = details.color;
+            iconEl.style.color = (i === 3) ? '#333' : '#fff'; 
+            labelEl.innerText = details.name;
+            
+            if (i < maxUnlockedLevel) {
+                node.classList.add('completed');
+            } else {
+                node.classList.add('unlocked');
+            }
+        } else {
+            iconEl.innerText = "🔒";
+            iconEl.style.background = "#222"; 
+            iconEl.style.color = "#555";      
+            labelEl.innerText = "Locked";
+            node.classList.add('locked');
+        }
+    }
+
+    document.getElementById('path-1-2').setAttribute('stroke', maxUnlockedLevel >= 2 ? '#f1c40f' : '#333');
+    document.getElementById('path-2-3').setAttribute('stroke', maxUnlockedLevel >= 3 ? '#f1c40f' : '#333');
+    document.getElementById('path-3-4').setAttribute('stroke', maxUnlockedLevel >= 4 ? '#f1c40f' : '#333');
+}
+
+function backToTitle() {
+    document.getElementById('campaign-screen').classList.add('hidden');
+    document.getElementById('start-screen').classList.remove('hidden');
+}
+
+function selectCampaignMap(mapId) {
+    if (mapId <= maxUnlockedLevel) {
+        document.getElementById('campaign-screen').classList.add('hidden');
+        startGame(mapId);
+    } else {
+        const node = document.getElementById(`node-${mapId}`);
+        node.style.transform = "translateX(5px)";
+        setTimeout(() => node.style.transform = "translateX(-5px)", 50);
+        setTimeout(() => node.style.transform = "none", 100);
+        showNotification("Map Locked! Complete previous mission.", "#c0392b");
+    }
+}
+
 // --- Game Loop & Init ---
 
 function startGame(mapId) {
@@ -1703,17 +2018,24 @@ function resetGame(mapId) {
         cancelAnimationFrame(gameLoopId);
     }
 
+    setGameUIVisibility(true);
+
     gameState = {
+        inMenu: false,
         mapLevel: mapId,
         money: mapId === 1 ? 450 : (mapId === 2 ? 600 : 800),
         lives: 20,
         wave: 0,
         enemies: [],
         towers: [],
+        walls: [],
+        wallsAvailable: (mapId === 4) ? 1 : 0,
+        placingWall: false,
         projectiles: [],
         puddles: [],
         particles: [],
         splatters: [],
+        canyonWalls: [], 
         isWaveActive: false,
         waveQueue: [],
         waveFrameTimer: 0,
@@ -1729,6 +2051,20 @@ function resetGame(mapId) {
         scale: gameState.scale,
         paletteCollapsed: false
     };
+
+    if (mapId === 4) {
+        let topPoints = [];
+        for(let i=0; i<=INTERNAL_WIDTH; i+=40) {
+            topPoints.push(120 + Math.random() * 20);
+        }
+        gameState.canyonWalls.push(topPoints);
+
+        let botPoints = [];
+        for(let i=0; i<=INTERNAL_WIDTH; i+=40) {
+            botPoints.push(600 - Math.random() * 20);
+        }
+        gameState.canyonWalls.push(botPoints);
+    }
     
     deselectTower();
     cancelPlacement();
@@ -1745,11 +2081,14 @@ function resetGame(mapId) {
 }
 
 function nextMap() {
-    if (gameState.mapLevel < 3) {
+    saveCampaignProgress(gameState.mapLevel);
+
+    if (gameState.mapLevel < 4) {
         startGame(gameState.mapLevel + 1);
     } else {
         alert("You have conquered all maps! Thanks for playing.");
-        location.reload();
+        document.getElementById('victory-screen').classList.add('hidden');
+        openCampaignMenu();
     }
 }
 
@@ -1785,9 +2124,16 @@ function endWave() {
     document.getElementById('start-wave-btn').disabled = false;
     const mapConfig = MAPS[gameState.mapLevel];
     
+    if (gameState.mapLevel === 4 && gameState.wave % 10 === 0) {
+        gameState.wallsAvailable++;
+        showNotification("+1 Wall Available!", "#fff");
+        updateWallUI();
+    }
+
     if (gameState.wave === mapConfig.waves) {
         document.getElementById('victory-screen').classList.remove('hidden');
         localStorage.removeItem('zombieDefenseSave');
+        saveCampaignProgress(gameState.mapLevel);
     } else {
         let bonus = 100 + (gameState.wave * 15);
         if (gameState.mapLevel === 3 && gameState.wave == 1) {bonus = 150}
@@ -1914,10 +2260,19 @@ function endGame(victory) {
 }
 
 function render() {
+    // 1. Menu Check
+    if (gameState.inMenu) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        return;
+    }
+
+    // 2. Draw Background
     const mapConfig = MAPS[gameState.mapLevel];
     ctx.fillStyle = mapConfig.bgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // --- MAP 2 & 3 DECOR (Underlays) ---
     if(gameState.mapLevel === 2) {
         ctx.fillStyle = '#444';
         ctx.fillRect(100, 100, 30, 50); ctx.fillRect(90, 140, 50, 10);
@@ -1936,8 +2291,11 @@ function render() {
         ctx.strokeStyle = '#fff'; ctx.stroke();
     }
 
+    // --- LAYER 1: THE PATH (Bottom) ---
+    // Moved up so walls render on top of it
     drawPath(mapConfig);
 
+    // --- LAYER 2: SPLATTERS (On top of path) ---
     gameState.splatters.forEach(s => {
         ctx.globalAlpha = Math.min(0.7, s.life / 100); 
         ctx.fillStyle = s.color;
@@ -1945,19 +2303,88 @@ function render() {
         ctx.globalAlpha = 1.0;
     });
 
+    // --- LAYER 3: MAP 4 SPECIFIC (Walls & Cliffs) ---
+    if (gameState.mapLevel === 4) {
+        
+        // A. Draw Player Walls (Above Path, Below Cliffs)
+        ctx.lineWidth = 2;
+        gameState.walls.forEach(w => {
+            // Style: Brown Canyon Rock
+            ctx.fillStyle = '#5d4037'; 
+            ctx.strokeStyle = '#3e2723'; 
+            
+            const wx = w.x - 20; 
+            const wy = w.isTop ? w.y : w.y - w.height;
+            
+            ctx.fillRect(wx, wy, 40, w.height);
+            ctx.strokeRect(wx, wy, 40, w.height);
+            
+            // Details
+            ctx.fillStyle = '#4e342e';
+            ctx.fillRect(wx + 5, wy, 10, w.height);
+            ctx.fillRect(wx + 25, wy, 5, w.height);
+        });
+
+        // B. Draw Preview (Ghost Wall)
+        if (gameState.placingWall) {
+            const isTop = gameState.dragY < INTERNAL_HEIGHT / 2;
+            const yPos = isTop ? 120 : 600;
+            const h = 384; 
+            
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(gameState.dragX - 20, isTop ? yPos : yPos - h, 40, h);
+            ctx.globalAlpha = 1.0;
+        }
+
+        // C. Draw Cliff Walls (The Mask - Draws ON TOP of everything else)
+        ctx.fillStyle = '#5d4037';
+        ctx.fillRect(0, 0, canvas.width, 120);   // Top Solid
+        ctx.fillRect(0, 600, canvas.width, 120); // Bottom Solid
+        
+        if (gameState.canyonWalls.length > 0) {
+            ctx.fillStyle = '#4e342e';
+            const topPoints = gameState.canyonWalls[0];
+            const botPoints = gameState.canyonWalls[1];
+
+            // Top Edge
+            ctx.beginPath();
+            ctx.moveTo(0, 120);
+            for(let i=0; i < topPoints.length; i++) {
+                ctx.lineTo(i * 40, topPoints[i]);
+            }
+            ctx.lineTo(canvas.width, 0);
+            ctx.lineTo(0, 0);
+            ctx.fill();
+
+            // Bottom Edge
+            ctx.beginPath();
+            ctx.moveTo(0, 600);
+            for(let i=0; i < botPoints.length; i++) {
+                ctx.lineTo(i * 40, botPoints[i]);
+            }
+            ctx.lineTo(canvas.width, 720);
+            ctx.lineTo(0, 720);
+            ctx.fill();
+        }
+    }
+
+    // --- LAYER 4: EFFECTS & ENTITIES ---
+
+    // Puddles (Offscreen Canvas)
     puddleCtx.clearRect(0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT);
-    
     gameState.puddles.forEach(p => p.draw(puddleCtx));
-    
     ctx.save();
     ctx.globalAlpha = 0.4;
     ctx.drawImage(puddleCanvas, 0, 0);
     ctx.restore();
 
+    // Game Entities
     gameState.towers.forEach(tower => tower.draw(ctx));
     gameState.enemies.forEach(enemy => enemy.draw(ctx));
     gameState.projectiles.forEach(proj => proj.draw(ctx));
 
+    // Particles
     gameState.particles.forEach(p => {
         if (p.type === 'blast') {
             ctx.save();
@@ -2011,6 +2438,7 @@ function render() {
         }
     });
 
+    // UI Overlays (Previews / Selection)
     if (!isMobile && gameState.selectedTowerType) {
         drawPlacementPreview(gameState.dragX, gameState.dragY, gameState.selectedTowerType);
     }
@@ -2021,6 +2449,7 @@ function render() {
         const {x, y, type} = gameState.pendingPlacement;
         drawPlacementPreview(x, y, type, true);
     }
+    
     if (gameState.selectedTower) {
         const t = gameState.selectedTower;
         ctx.beginPath();
@@ -2091,7 +2520,8 @@ function loadGame() {
     const save = JSON.parse(saveString);
 
     resetGame(save.mapLevel);
-
+    
+    gameState.inMenu = false;
     gameState.money = save.money;
     gameState.lives = save.lives;
     gameState.wave = save.wave;
@@ -2175,6 +2605,8 @@ function init() {
     if (!notesShown) {
         checkSaveGame();
     }
+
+    setGameUIVisibility(false);
 
     render(); 
 }
