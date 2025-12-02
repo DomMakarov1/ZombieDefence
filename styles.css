@@ -1,4 +1,3 @@
-/* --- COPY INTO style.css START --- */
 :root {
     --primary: #2c3e50;
     --accent: #e74c3c;
@@ -319,4 +318,5 @@ body {
     border-color: #fff;
     box-shadow: 0 0 5px #f1c40f;
     transform: translate(-50%, -50%) scale(1.2);
+
 }
