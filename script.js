@@ -153,7 +153,7 @@ const MAPS = {
         points: [
             {x: 0, y: 360}, {x: 1280, y: 360}
         ],
-        towers: ['sniper', 'bombardier', 'railgun', 'tesla'], 
+        towers: ['ricochet', 'demolitionist', 'sonic', 'gatling'],
         waves: 30
     }
 };
@@ -259,6 +259,38 @@ const TOWER_TYPES = {
             { name: "Heavy Slug", cost: 2500, damage: 300, range: 700, desc: "300 Damage + Greater Range" },
             { name: "Gauss Cannon", cost: 4500, damage: 500, desc: "500 Damage" }
         ]
+    },
+    ricochet: {
+        name: "Ricochet", cost: 700, range: 300, damage: 20, fireRate: 40, color: '#e67e22', projSpeed: 12, projType: 'ricochet', armorPierce: true,
+        upgrades: [
+            { name: "Rubber Alloy", cost: 800, damage: 60, desc: "Damage Up" },
+            { name: "Buzzsaw", cost: 1800, damage: 100, desc: "High Velocity" },
+            { name: "Titanium Edge", cost: 3500, damage: 200, fireRate: 20, desc: "Rapid Bouncing Death" }
+        ]
+    },
+    demolitionist: {
+        name: "Demolitionist", cost: 850, range: 50, damage: 40, fireRate: 180, color: '#8e44ad', projType: 'mine', aoe: 60,
+        upgrades: [
+            { name: "Cluster Mines", cost: 500, fireRate: 120, desc: "Places mines faster" },
+            { name: "Shredder", cost: 1200, damage: 80, desc: "Big Damage" },
+            { name: "C4 Charges", cost: 2500, damage: 100, aoe: 100, desc: "Massive Explosions" }
+        ]
+    },
+    sonic: {
+        name: "Sonic Blaster", cost: 850, range: 120, damage: 10, fireRate: 50, color: '#00ffff', projSpeed: 15, projType: 'sonic',
+        upgrades: [
+            { name: "Subwoofer", cost: 600, range: 150, desc: "Increased Range" },
+            { name: "Concussive", cost: 1400, damage: 20, fireRate: 40, desc: "Stronger Knockback" },
+            { name: "Resonance", cost: 3000, damage: 50, fireRate: 10, desc: "Rapid Fire Waves" }
+        ]
+    }, 
+    gatling: {
+        name: "Gatling", cost: 1500, range: 200, damage: 15, fireRate: 30, color: '#7f8c8d', projSpeed: 20, projType: 'gatling',
+        upgrades: [
+            { name: "Water Cooled", cost: 1000, desc: "Spins up 2x faster" },
+            { name: "Depleted Uranium", cost: 2200, damage: 25, armorPierce: true, desc: "Armor Piercing" },
+            { name: "Bullet Storm", cost: 4500, damage: 40, desc: "Max Speed Cap Increased" }
+        ]
     }
 };
 
@@ -296,6 +328,7 @@ let gameState = {
     towers: [],
     projectiles: [],
     particles: [],
+    mines: [],
     splatters: [],
     puddles: [],
     isWaveActive: false,
@@ -315,6 +348,7 @@ let gameState = {
 };
 
 let maxUnlockedLevel = 1;
+let newlyUnlockedMap = null;
 let gameLoopId = null;
 
 // --- Helper Functions ---
@@ -356,7 +390,7 @@ function getWaveData(mapId, waveNum) {
 
         return w([['carrier', 25, 80]], "FINAL WAVE: SURVIVE!");
     }
-    // MAP 2
+    // MAP 2 (Graveyard)
     else if (mapId === 2) {
         if (waveNum === 1) return w([['walker', 12, 60]], "The dead rise...");
         if (waveNum === 2) return w([['walker', 15, 50], ['runner', 5, 60]], "Runners!");
@@ -446,26 +480,15 @@ function getWaveData(mapId, waveNum) {
         if (waveNum === 29) return w([['mutant', 40, 50], ['necromancer', 3, 200]]);
         return w([['boss', 10, 100], ['carrier', 25, 80], ['necromancer', 10, 200]], "TOTAL CONTAINMENT FAILURE");
     }
+    // MAP 4 (Canyon)
     else if (mapId === 4) {
-        if (waveNum === 1) return w([['runner', 10, 60]], "Canyon Run: Fast enemies ahead!");
-        if (waveNum === 2) return w([['runner', 20, 50]]);
-        if (waveNum === 3) return w([['walker', 10, 40], ['runner', 10, 40]]);
-        if (waveNum === 4) return w([['tank', 2, 120]], "Heavy Armor entering the pass.");
-        if (waveNum === 5) return w([['runner', 30, 30], ['tank', 3, 100]]);
-        
-        if (waveNum === 6) return w([['tank', 5, 80], ['bombardier', 0, 0]], "Use Railguns for lines!"); // Hint in text
-        if (waveNum === 7) return w([['carrier', 1, 250], ['runner', 20, 30]]);
-        if (waveNum === 8) return w([['mutant', 2, 200], ['tank', 5, 60]]);
-        if (waveNum === 9) return w([['runner', 50, 20]], "Stampede!");
-        if (waveNum === 10) return w([['boss', 2, 150], ['tank', 10, 60]], "Canyon Bosses");
-        
-        if (waveNum === 15) return w([['boss', 3, 150], ['carrier', 5, 150], ['mutant', 5, 100]]);
-        if (waveNum === 20) return w([['necromancer', 2, 300], ['tank', 20, 40], ['vampire', 20, 40]]);
-        
-        if (waveNum === 25) return w([['boss', 5, 150], ['tank', 40, 30]]);
-        
-        // Final Wave
-        return w([['boss', 10, 100], ['carrier', 20, 80], ['tank', 50, 30]], "THE FINAL STAND");
+        if (waveNum === 1) return w([['walker', 12, 80]], "Typical start."); 
+        if (waveNum === 2) return w([['walker', 10, 50], ['runner', 10, 60]]);
+        if (waveNum === 3) return w([['walker', 25, 35], ['runner', 20, 35]]);
+        if (waveNum === 4) return w([['tank', 1, 10], ['runner', 30, 30]]);
+        if (waveNum === 5) return w([['walker', 25, 35], ['runner', 20, 35]]);
+        if (waveNum === 6) return w([['tank', 5, 20],['walker', 10, 5]]);
+        //if (waveNum)
     }
 }
 
@@ -568,19 +591,28 @@ function drawPath(mapConfig) {
 
 function isValidPlacement(x, y) {
     if (x < 20 || x > INTERNAL_WIDTH - 20 || y < 20 || y > INTERNAL_HEIGHT - 20) return false;
+
     if (gameState.mapLevel === 4) {
-        let isOnWall = false;
+        let isContained = false;
+        const towerRadius = 15; 
+
         for (const w of gameState.walls) {
-            const wx = w.x - 20;
-            const wy = w.isTop ? w.y : w.y - w.height;
-            const wWidth = 40;
-            const wHeight = w.height;
-            if (x >= wx && x <= wx + wWidth && y >= wy && y <= wy + wHeight) {
-                isOnWall = true;
+            const wallLeft = w.x - 20; 
+            const wallWidth = 40;
+            const wallTop = w.isTop ? w.y : w.y - w.height;
+            const wallHeight = w.height;
+            if (x - towerRadius >= wallLeft && 
+                x + towerRadius <= wallLeft + wallWidth &&
+                y - towerRadius >= wallTop && 
+                y + towerRadius <= wallTop + wallHeight) {
+                
+                isContained = true;
                 break;
             }
         }
-        if (!isOnWall) return false;
+
+        if (!isContained) return false;
+
     } 
     else {
         if (gameState.mapLevel === 4 && (y < 130 || y > 590)) return false; 
@@ -600,6 +632,7 @@ function isValidPlacement(x, y) {
             if (distToSegment(x, y, p1.x, p1.y, p2.x, p2.y) < 40) return false;
         }
     }
+
     for (const tower of gameState.towers) {
         if (Math.hypot(x - tower.x, y - tower.y) < 35) return false;
     }
@@ -665,6 +698,8 @@ class Enemy {
         this.poisoned = 0;
         this.poisonTick = 0;
         this.poisonDmg = 0;
+        this.lastY = startY;
+        this.stuckTimer = 0;
         this.isBuffedByScientist = false;
     }
 
@@ -713,10 +748,19 @@ class Enemy {
         let moveX = (dx / dist) * this.speed;
         let moveY = (dy / dist) * this.speed;
 
-        // --- 4: SQUARE-PATH WALL LOGIC ---
+        // --- MAP 4: WALL LOGIC WITH STUCK CHECK ---
         if (gameState.mapLevel === 4) {
             const r = this.radius;
             const pathY = 360; 
+
+            if (Math.abs(this.y - this.lastY) < 0.1) {
+                this.stuckTimer++;
+            } else {
+                this.stuckTimer = 0;
+            }
+            this.lastY = this.y;
+
+            const isStuck = this.stuckTimer > 12;
 
             for (const w of gameState.walls) {
                 const wallStart = w.x - 20 - r;
@@ -728,6 +772,7 @@ class Enemy {
                     : (w.y - w.height - r - 4);
 
                 if (this.x > wallStart && this.x < returnZoneEnd) {
+
                     if (this.x < wallEnd) {
                         let isDeepInWall = false;
                         if (w.isTop) {
@@ -736,10 +781,15 @@ class Enemy {
                             if (this.y > wallTipY + 5) isDeepInWall = true;
                         }
 
-                        if (isDeepInWall) {
+                        if (isStuck) {
+                            moveX = 0;
+                            moveY = w.isTop ? this.speed : -this.speed;
+                        }
+                        else if (isDeepInWall) {
                             moveX = 0; 
                             moveY = w.isTop ? this.speed : -this.speed;
-                        } else {
+                        } 
+                        else {
                             this.y = wallTipY;
                             moveX = this.speed;
                             moveY = 0; 
@@ -747,6 +797,7 @@ class Enemy {
                     }
                     else {
                         const distToPath = Math.abs(this.y - pathY);
+                        
                         if (distToPath > 5) {
                             moveX = 0; 
                             moveY = (pathY > this.y) ? this.speed : -this.speed;
@@ -932,7 +983,10 @@ class Tower {
         this.chain = type.chain || 0;
         this.rampSpeed = type.rampSpeed || 1;
         this.slow = type.slow || 1;
-        this.buffEfficiency = type.buffEfficiency !== undefined ? type.buffEfficiency : 1; 
+        this.buffEfficiency = type.buffEfficiency !== undefined ? type.buffEfficiency : 1;
+
+        this.spinUp = 0;
+        this.maxSpin = 60;
         
         this.level = 0;
         this.kills = 0;
@@ -990,7 +1044,6 @@ class Tower {
         
         let buffRange = (this.buffs ? (this.buffs.range || 0) : 0);
         buffRange = Math.floor(buffRange * this.buffEfficiency);
-
         const effectiveRange = this.range + buffRange;
 
         let bestDist = effectiveRange + 10;
@@ -1008,45 +1061,63 @@ class Tower {
             }
         }
         this.target = bestTarget;
-        
-        if (this.target) {
-            if (this.projType === 'rail' && this.cooldown <= 60 && this.cooldown > 0) {
-                const dx = this.target.x - this.x;
-                const dy = this.target.y - this.y;
-                this.angle = Math.atan2(dy, dx);
-                if (this.cooldown === 60) AudioSys.playCharge();
-                if (Math.random() < 0.5) {
-                    const muzzleLen = 20;
-                    const mx = this.x + Math.cos(this.angle) * muzzleLen;
-                    const my = this.y + Math.sin(this.angle) * muzzleLen;
-                    gameState.particles.push({
-                        x: mx + (Math.random()-0.5)*20, 
-                        y: my + (Math.random()-0.5)*20,
-                        vx: (this.x - mx)*0.1, 
-                        vy: (this.y - my)*0.1,
-                        life: 15, color: '#00ffff', size: 1.5
-                    });
-                }
-            }
-            else if (this.cooldown <= 0 || this.projType === 'beam') {
-                const dx = this.target.x - this.x;
-                const dy = this.target.y - this.y;
-                this.angle = Math.atan2(dy, dx);
-            }
 
-            if (this.projType === 'beam') {
-                if (this.target === this.lastTarget) this.laserTime += this.rampSpeed;
-                else this.laserTime = 0; 
-                this.lastTarget = this.target;
+        if (this.target || (this.typeKey === 'demolitionist' && gameState.isWaveActive)) {
+            
+            if (this.target) {
+                if (this.projType === 'rail' && this.cooldown <= 60 && this.cooldown > 0) {
+                    const dx = this.target.x - this.x;
+                    const dy = this.target.y - this.y;
+                    this.angle = Math.atan2(dy, dx);
+                    if (this.cooldown === 60) AudioSys.playCharge();
+                    if (Math.random() < 0.5) {
+                        const muzzleLen = 20;
+                        const mx = this.x + Math.cos(this.angle) * muzzleLen;
+                        const my = this.y + Math.sin(this.angle) * muzzleLen;
+                        gameState.particles.push({
+                            x: mx + (Math.random()-0.5)*20, 
+                            y: my + (Math.random()-0.5)*20,
+                            vx: (this.x - mx)*0.1, vy: (this.y - my)*0.1,
+                            life: 15, color: '#00ffff', size: 1.5
+                        });
+                    }
+                }
+                else if (this.cooldown <= 0 || this.projType === 'beam') {
+                    const dx = this.target.x - this.x;
+                    const dy = this.target.y - this.y;
+                    this.angle = Math.atan2(dy, dx);
+                }
+
+                if (this.projType === 'beam') {
+                    if (this.target === this.lastTarget) this.laserTime += this.rampSpeed;
+                    else this.laserTime = 0; 
+                    this.lastTarget = this.target;
+                }
+            } else {
+                this.laserTime = 0;
+                this.lastTarget = null;
             }
 
             if (this.cooldown <= 0) {
-                this.shoot();
-                this.cooldown = this.fireRate;
+                if (this.typeKey === 'gatling') {
+                    let spinRate = (this.level >= 1) ? 2 : 1;
+                    if (this.spinUp < this.maxSpin) this.spinUp += spinRate;
+
+                    const minRate = (this.level >= 3) ? 2 : 3;
+                    const currentRate = Math.max(minRate, this.fireRate - (this.spinUp/2));
+                    
+                    this.shoot();
+                    this.cooldown = currentRate;
+                } 
+                else {
+                    this.shoot();
+                    this.cooldown = this.fireRate;
+                }
             }
         } else {
             this.laserTime = 0;
             this.lastTarget = null;
+            if (this.typeKey === 'gatling' && this.spinUp > 0) this.spinUp--;
         }
     }
 
@@ -1092,6 +1163,103 @@ class Tower {
 
         if (this.projType === 'lightning') {
             this.createLightning(this.target, this.chain);
+            return;
+        }
+
+        if (this.projType === 'mine') {
+            let mineX = this.x;
+            let mineY = this.y;
+            let validSpot = false;
+            
+            const isInsideWall = (tx, ty) => {
+                if (gameState.mapLevel === 4) {
+                    if (ty <= 125 || ty >= 595) return true;
+                }
+                
+                for (const w of gameState.walls) {
+                    const wx = w.x - 20; 
+                    const wy = w.isTop ? w.y : w.y - w.height;
+                    const ww = 40;
+                    const wh = w.height;
+                    
+                    if (tx > wx - 6 && tx < wx + ww + 6 && 
+                        ty > wy - 6 && ty < wy + wh + 6) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            if (gameState.walls.length > 0) {
+                for(let i=0; i<8; i++) {
+                    const w = gameState.walls[Math.floor(Math.random() * gameState.walls.length)];
+                    
+                    const halfW = 20;
+                    const wallTopY = w.isTop ? w.y : (w.y - w.height);
+                    const wallBotY = w.isTop ? (w.y + w.height) : w.y;
+
+                    const side = Math.floor(Math.random() * 3);
+                    let tryX, tryY;
+                    
+                    const buffer = 20; 
+
+                    if (side === 0) {
+                        tryX = w.x - halfW - buffer;
+                        tryY = wallTopY + Math.random() * (wallBotY - wallTopY);
+                    } 
+                    else if (side === 1) {
+                        tryX = w.x + halfW + buffer;
+                        tryY = wallTopY + Math.random() * (wallBotY - wallTopY);
+                    } 
+                    else { 
+                        tryX = w.x + (Math.random() - 0.5) * 40; 
+                        tryY = w.isTop ? (wallBotY + buffer) : (wallTopY - buffer);
+                    }
+
+                    if (Math.hypot(tryX - this.x, tryY - this.y) <= this.range) {
+                        if (!isInsideWall(tryX, tryY)) {
+                            mineX = tryX;
+                            mineY = tryY;
+                            validSpot = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!validSpot) {
+                for(let k=0; k<5; k++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * this.range;
+                    const testX = this.x + Math.cos(angle) * dist;
+                    let testY = this.y + Math.sin(angle) * dist;
+
+                    if (gameState.mapLevel === 4) {
+                        if (testY < 200) testY = 200;
+                        if (testY > 520) testY = 520;
+                    }
+
+                    if (!isInsideWall(testX, testY)) {
+                        mineX = testX;
+                        mineY = testY;
+                        validSpot = true;
+                        break;
+                    }
+                }
+                if (!validSpot) {
+                    mineX = this.x + (Math.random()-0.5)*20;
+                    mineY = this.y + (Math.random()-0.5)*20;
+                }
+            }
+
+            gameState.mines.push({
+                x: mineX, y: mineY,
+                damage: finalDamage,
+                aoe: this.aoe,
+                source: this,
+                triggered: false,
+                life: 1200
+            });
             return;
         }
 
@@ -1183,8 +1351,8 @@ class Tower {
         } else if (this.projType === 'acid') {
              ctx.fillStyle = this.color;
              ctx.fillRect(0, -6, 20, 12); 
-        } else if (this.projType === 'buff') {
-            //no barrel for trumpeter
+        } else if (this.projType === 'buff' || this.projType === 'mine') {
+            //no barrel
         } else {
             ctx.fillRect(0, -4, 22, 8);
         }
@@ -1273,6 +1441,7 @@ class Projectile {
         this.slow = sourceTower.slow;
         this.active = true;
         this.radius = 2; 
+        this.lifeTime = 0;
         if(target) {
             const angle = Math.atan2(target.y - y, target.x - x);
             this.vx = Math.cos(angle) * this.speed;
@@ -1285,6 +1454,35 @@ class Projectile {
         this.x += this.vx;
         this.y += this.vy;
         
+        this.lifeTime++;
+
+        if (this.projType === 'ricochet') {
+            if (gameState.mapLevel === 4) {
+                if (this.y <= 125 || this.y >= 595) {
+                    this.vy = -this.vy;
+                    this.bounces = (this.bounces || 0) + 1;
+                    createParticles(this.x, this.y, '#fff', 3);
+                }
+            }
+
+            if (gameState.walls && this.lifeTime > 5) {
+                for(let w of gameState.walls) {
+                    const wx = w.x - 20; const wy = w.isTop ? w.y : w.y - w.height;
+                    const ww = 40; const wh = w.height;
+                    
+                    if (this.x > wx && this.x < wx + ww && this.y > wy && this.y < wy + wh) {
+                        this.vx = -this.vx;
+                        this.bounces = (this.bounces || 0) + 1;
+                        createParticles(this.x, this.y, '#fff', 3);
+                        this.x += this.vx * 2;
+                        break; 
+                    }
+                }
+            }
+            
+            if (this.bounces > 4) this.active = false;
+        }
+
         if (this.projType === 'flame') {
             this.radius += 0.5; 
             gameState.enemies.forEach(e => {
@@ -1298,10 +1496,12 @@ class Projectile {
         }
 
         if (this.active && this.target && !this.target.finished && this.target.hp > 0) {
-            
-            const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
-            this.vx = Math.cos(angle) * this.speed;
-            this.vy = Math.sin(angle) * this.speed;
+
+            if (this.projType !== 'ricochet') {
+                const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+            }
 
             const dist = Math.hypot(this.x - this.target.x, this.y - this.target.y);
 
@@ -1323,6 +1523,21 @@ class Projectile {
     hit(directHitEnemy) {
         this.active = false;
         
+        if (this.projType === 'sonic') {
+            if (directHitEnemy) {
+                directHitEnemy.takeDamage(this.damage, false, this.sourceTower);
+
+                const pushPower = 40; 
+                directHitEnemy.x -= (directHitEnemy.speed * pushPower); 
+
+                gameState.particles.push({
+                    type: 'blast', x: this.x, y: this.y, radius: 5, maxRadius: 30, expandRate: 2, 
+                    color: 'rgba(0, 255, 255, 0.5)', life: 10, maxLife: 10
+                });
+            }
+            return;
+        }
+
         if (this.projType === 'acid') {
             let duration = 180; 
             let slowVal = 0.6; 
@@ -1372,6 +1587,13 @@ class Projectile {
         } else if (this.projType === 'bomb') {
             ctx.fillStyle = '#000';
             ctx.beginPath(); ctx.arc(this.x, this.y, 5, 0, Math.PI * 2); ctx.fill();
+        } else if (this.projType === 'ricochet') {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI * 2); ctx.fill();
+        } else if (this.projType === 'sonic') {
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(this.x, this.y, 6, 0, Math.PI * 2); ctx.stroke();
         } else {
             ctx.fillStyle = this.sourceTower.color;
             ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
@@ -1655,17 +1877,20 @@ function handleCanvasClick(e) {
 
     const pos = getCanvasCoordinates(e.clientX, e.clientY);
     
+    // --- WALL PLACEMENT LOGIC ---
     if (gameState.placingWall) {
         const isTop = pos.y < INTERNAL_HEIGHT / 2;
         const wallY = isTop ? 120 : 600;
         
         let valid = true;
-        gameState.walls.forEach(w => {
-            if (Math.abs(w.x - pos.x) < 60) valid = false;
-        });
+        
+        const minSpacing = 120;
 
         gameState.walls.forEach(w => {
-            if (w.isTop !== isTop && Math.abs(w.x - pos.x) < 60) valid = false;
+            if (Math.abs(w.x - pos.x) < minSpacing) valid = false;
+        });
+        gameState.walls.forEach(w => {
+            if (w.isTop !== isTop && Math.abs(w.x - pos.x) < minSpacing) valid = false;
         });
 
         if (valid && gameState.wallsAvailable > 0) {
@@ -1681,7 +1906,7 @@ function handleCanvasClick(e) {
             createParticles(pos.x, wallY, '#5d4037', 15);
             updateWallUI();
         } else {
-            showNotification("Invalid Position", "#c0392b");
+            showNotification("Too Close to other Wall!", "#c0392b");
         }
         return;
     }
@@ -1892,6 +2117,17 @@ function selectWallPlacement() {
     updateWallUI();
 }
 
+function isValidWallPlacement(x) {
+    const minSpacing = 120;
+    
+    for (const w of gameState.walls) {
+        if (Math.abs(w.x - x) < minSpacing) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function updateWallUI() {
     const badge = document.getElementById('wall-stock');
     if (badge) {
@@ -1962,7 +2198,18 @@ function openCampaignMenu() {
         
         node.className = 'map-node'; 
         
-        if (i <= maxUnlockedLevel) {
+        if (i === newlyUnlockedMap) {
+            iconEl.innerText = "🔒";
+            iconEl.style.background = "#222"; 
+            iconEl.style.color = "#555";      
+            labelEl.innerText = "Locked";
+            node.classList.add('locked');
+
+            setTimeout(() => {
+                triggerUnlockAnimation(i);
+            }, 500);
+        }
+        else if (i <= maxUnlockedLevel) {
             const details = CAMPAIGN_DETAILS[i];
             iconEl.innerText = details.icon;
             iconEl.style.background = details.color;
@@ -1983,9 +2230,45 @@ function openCampaignMenu() {
         }
     }
 
+    // Paths
     document.getElementById('path-1-2').setAttribute('stroke', maxUnlockedLevel >= 2 ? '#f1c40f' : '#333');
     document.getElementById('path-2-3').setAttribute('stroke', maxUnlockedLevel >= 3 ? '#f1c40f' : '#333');
     document.getElementById('path-3-4').setAttribute('stroke', maxUnlockedLevel >= 4 ? '#f1c40f' : '#333');
+}
+
+function triggerUnlockAnimation(mapId) {
+    const node = document.getElementById(`node-${mapId}`);
+    const iconEl = node.querySelector('.node-icon');
+    const labelEl = node.querySelector('.node-label');
+    
+    node.classList.add('shake-node');
+    
+    const rect = node.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    let particleCount = 0;
+    const particleInterval = setInterval(() => {
+        createMenuParticle(centerX + (Math.random()-0.5)*40, centerY + (Math.random()-0.5)*40);
+        particleCount++;
+        if(particleCount > 20) clearInterval(particleInterval);
+    }, 50);
+
+    setTimeout(() => {
+        const details = CAMPAIGN_DETAILS[mapId];
+        iconEl.innerText = details.icon;
+        iconEl.style.background = details.color;
+        iconEl.style.color = (mapId === 3) ? '#333' : '#fff'; 
+        labelEl.innerText = details.name;
+        
+        node.classList.remove('locked');
+        node.classList.add('unlocked');
+        
+        createUnlockBurst(centerX, centerY);
+        showNotification("New Map Unlocked!", "#2ecc71");
+        
+        newlyUnlockedMap = null;
+    }, 2000);
 }
 
 function backToTitle() {
@@ -2034,6 +2317,7 @@ function resetGame(mapId) {
         projectiles: [],
         puddles: [],
         particles: [],
+        mines: [],
         splatters: [],
         canyonWalls: [], 
         isWaveActive: false,
@@ -2092,6 +2376,19 @@ function nextMap() {
     }
 }
 
+function returnToCampaignFromVictory() {
+    document.getElementById('victory-screen').classList.add('hidden');
+
+    const nextLevel = gameState.mapLevel + 1;
+    if (nextLevel <= 4 && nextLevel > maxUnlockedLevel) {
+        maxUnlockedLevel = nextLevel;
+        localStorage.setItem('zombieDefenseProgress', maxUnlockedLevel);
+        newlyUnlockedMap = nextLevel;
+    }
+    
+    openCampaignMenu();
+}
+
 function startNextWave() {
     const mapConfig = MAPS[gameState.mapLevel];
     if (gameState.wave >= mapConfig.waves) return;
@@ -2122,6 +2419,9 @@ function startNextWave() {
 function endWave() {
     gameState.isWaveActive = false;
     document.getElementById('start-wave-btn').disabled = false;
+
+    gameState.mines = [];
+
     const mapConfig = MAPS[gameState.mapLevel];
     
     if (gameState.mapLevel === 4 && gameState.wave % 10 === 0) {
@@ -2137,6 +2437,7 @@ function endWave() {
     } else {
         let bonus = 100 + (gameState.wave * 15);
         if (gameState.mapLevel === 3 && gameState.wave == 1) {bonus = 150}
+        if (gameState.mapLevel === 4 && gameState.wave == 1 || gameState.wave == 2) {bonus = 205}
         gameState.money += bonus;
         showNotification(`Cleared! +$${bonus}`, "#2ecc71");
         
@@ -2245,6 +2546,38 @@ function update() {
         gameState.splatters[i].life--;
         if(gameState.splatters[i].life <= 0) gameState.splatters.splice(i, 1);
     }
+    
+    if (gameState.mines) {
+        for (let i = gameState.mines.length - 1; i >= 0; i--) {
+            const m = gameState.mines[i];
+            m.life--;
+
+            let hit = false;
+            for (const e of gameState.enemies) {
+                if (Math.hypot(e.x - m.x, e.y - m.y) < 20) {
+                    hit = true;
+                    break;
+                }
+            }
+
+            if (hit || m.life <= 0) {
+                if (hit) {
+                    AudioSys.playExplosion();
+                    gameState.particles.push({
+                        type: 'blast', x: m.x, y: m.y, radius: 10, maxRadius: m.aoe, 
+                        expandRate: 5, color: '#e74c3c', life: 20, maxLife: 20
+                    });
+                    
+                    gameState.enemies.forEach(e => {
+                        if (Math.hypot(e.x - m.x, e.y - m.y) < m.aoe) {
+                            e.takeDamage(m.damage, true, m.source);
+                        }
+                    });
+                }
+                gameState.mines.splice(i, 1);
+            }
+        }
+    }
 
     updateUI();
 }
@@ -2331,10 +2664,20 @@ function render() {
             const yPos = isTop ? 120 : 600;
             const h = 384; 
             
+            const isPlaceable = isValidWallPlacement(gameState.dragX);
+
+            ctx.save();
             ctx.globalAlpha = 0.5;
-            ctx.fillStyle = '#fff';
+            
+            ctx.fillStyle = isPlaceable ? '#ffffff' : '#c0392b'; 
+            
             ctx.fillRect(gameState.dragX - 20, isTop ? yPos : yPos - h, 40, h);
-            ctx.globalAlpha = 1.0;
+
+            ctx.strokeStyle = isPlaceable ? '#fff' : '#e74c3c';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(gameState.dragX - 20, isTop ? yPos : yPos - h, 40, h);
+            
+            ctx.restore();
         }
 
         // C. Draw Cliff Walls (The Mask - Draws ON TOP of everything else)
@@ -2367,6 +2710,56 @@ function render() {
             ctx.lineTo(0, 720);
             ctx.fill();
         }
+    }
+
+    if (gameState.mines) {
+        gameState.mines.forEach(m => {
+            if (m.source && m.source.level >= 3) {
+                ctx.save();
+                ctx.translate(m.x, m.y);
+                
+                ctx.fillStyle = '#143625';
+                ctx.fillRect(-8, -6, 16, 12);
+                
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(-8, -6, 16, 12);
+
+                ctx.lineWidth = 1;
+                
+                ctx.beginPath(); ctx.strokeStyle = '#3498db';
+                ctx.moveTo(2, 2); ctx.lineTo(6, 4); ctx.stroke();
+
+                ctx.beginPath(); ctx.strokeStyle = '#2ecc71';
+                ctx.moveTo(2, 3); ctx.lineTo(6, 5); ctx.stroke();
+
+                ctx.beginPath(); ctx.strokeStyle = '#e74c3c';
+                ctx.moveTo(2, 4); ctx.lineTo(6, 6); ctx.stroke();
+
+                if (Math.floor(Date.now() / 200) % 2 === 0) {
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fillRect(-3, -2, 6, 4);
+                    
+                    ctx.shadowColor = '#e74c3c';
+                    ctx.shadowBlur = 5;
+                    ctx.strokeRect(-3, -2, 6, 4);
+                } else {
+                    ctx.fillStyle = '#550000';
+                    ctx.fillRect(-3, -2, 6, 4);
+                }
+                
+                ctx.restore();
+            } 
+            else {
+                ctx.fillStyle = '#2c3e50';
+                ctx.beginPath(); ctx.arc(m.x, m.y, 6, 0, Math.PI*2); ctx.fill();
+                
+                ctx.fillStyle = '#e74c3c'; 
+                if (Math.floor(Date.now() / 200) % 2 === 0) {
+                    ctx.beginPath(); ctx.arc(m.x, m.y, 2, 0, Math.PI*2); ctx.fill();
+                }
+            }
+        });
     }
 
     // --- LAYER 4: EFFECTS & ENTITIES ---
@@ -2631,6 +3024,9 @@ function saveGame() {
         money: gameState.money,
         lives: gameState.lives,
         wave: gameState.wave,
+        walls: gameState.walls, 
+        wallsAvailable: gameState.wallsAvailable,
+        
         towers: gameState.towers.map(t => ({
             typeKey: t.typeKey,
             x: t.x,
@@ -2681,6 +3077,11 @@ function loadGame() {
     gameState.money = save.money;
     gameState.lives = save.lives;
     gameState.wave = save.wave;
+    gameState.mines = [];
+    
+    // NEW: Restore Wall Data
+    if (save.walls) gameState.walls = save.walls;
+    if (save.wallsAvailable !== undefined) gameState.wallsAvailable = save.wallsAvailable;
 
     gameState.towers = save.towers.map(tData => {
         const newTower = new Tower(tData.x, tData.y, tData.typeKey);
@@ -2705,6 +3106,8 @@ function loadGame() {
     
     setupWaveProgressUI(); 
     updateUI();
+    if (save.mapLevel === 4) updateWallUI(); 
+    
     showNotification("Game Loaded!", "#2ecc71");
 }
 
