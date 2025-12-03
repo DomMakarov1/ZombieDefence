@@ -9,12 +9,12 @@
  */
 
 // --- VERSION CONTROL ---
-const GAME_VERSION = "3.2";
+const GAME_VERSION = "3.3";
 
 const PATCH_NOTES = `
     <ul>
-        <li><strong>NEW Save System:</strong> Your progress is now saved automatically after every wave!</li>
-        <li><strong>NEW Scientist Ability:</strong> Scientists now buff nearby enemies (Speed, Health, Armor).</li>
+        <li><strong>NEW Campaign Screen:</strong> Unlock new maps each time you win!</li>
+        <li><strong>NEW Map:</strong> Introducing a new map 4, with a new unique feature.</li>
         <li><strong>Wave Overhauls:</strong> Completely revamped wave structure and difficulty progression.</li>
         <li><strong>Towers Rebalanced:</strong> Smoother early-game difficulty curve.</li>
         <li><strong>Bug Fixes:</strong> Fixed Necromancer spawning logic and the game breaking after restarting after dying.</li>
@@ -2459,6 +2459,162 @@ function render() {
         ctx.strokeStyle = 'rgba(241, 196, 15, 0.6)';
         ctx.lineWidth = 2;
         ctx.stroke();
+    }
+}
+
+function requestExit() {
+    // Pause the game loop logic temporarily (optional, but good UX)
+    // We just show the modal over the game
+    document.getElementById('exit-confirm-modal').classList.remove('hidden');
+}
+
+function cancelExit() {
+    document.getElementById('exit-confirm-modal').classList.add('hidden');
+}
+
+function confirmExit() {
+    // 1. Close Modal
+    document.getElementById('exit-confirm-modal').classList.add('hidden');
+    
+    // 2. Stop Game Loop
+    if (gameLoopId) cancelAnimationFrame(gameLoopId);
+    
+    // 3. Update State to Menu Mode
+    gameState.inMenu = true;
+    gameState.gameOver = true; // Stop updates
+    
+    // 4. Hide Game UI
+    setGameUIVisibility(false);
+    
+    // 5. Show Start Screen
+    document.getElementById('start-screen').classList.remove('hidden');
+    
+    // 6. Draw Black Background (Clear canvas)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// --- UNLOCK LOGIC (Crumble Effect) ---
+
+function requestUnlock() {
+    const btn = document.getElementById('unlock-confirm-btn');
+    btn.classList.add('visible');
+}
+
+function confirmUnlock() {
+    document.getElementById('unlock-confirm-btn').classList.remove('visible');
+    
+    // 1. Target ONLY LOCKED nodes (This excludes Grasslands)
+    const nodes = document.querySelectorAll('.map-node.locked');
+    
+    if (nodes.length === 0) {
+        showNotification("All maps already unlocked!", "#f1c40f");
+        return;
+    }
+
+    // 2. Apply Animation & Particles
+    nodes.forEach(node => {
+        node.classList.add('shake-node');
+        
+        const rect = node.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        
+        // Spawn mud particles over time (to match the ramping shake)
+        let particleCount = 0;
+        const particleInterval = setInterval(() => {
+            // Spawn 2 particles per tick
+            createMenuParticle(centerX + (Math.random()-0.5)*40, centerY + (Math.random()-0.5)*40);
+            createMenuParticle(centerX + (Math.random()-0.5)*40, centerY + (Math.random()-0.5)*40);
+            
+            particleCount++;
+            if(particleCount > 30) clearInterval(particleInterval); // Stop spawning after ~1.5s
+        }, 50);
+    });
+
+    // 3. Unlock AFTER the animation finishes (2 seconds)
+    setTimeout(() => {
+        maxUnlockedLevel = 4;
+        localStorage.setItem('zombieDefenseProgress', 4);
+        
+        // Remove shake class and update icons
+        openCampaignMenu(); 
+        
+        // Explosion of confetti to celebrate
+        nodes.forEach(node => {
+             const rect = node.getBoundingClientRect();
+             createUnlockBurst(rect.left + rect.width/2, rect.top + rect.height/2);
+        });
+
+        showNotification("All Maps Unlocked!", "#2ecc71");
+    }, 2000); // 2.0 seconds matches CSS animation duration
+}
+
+// Mud/Dirt Particles (Heavy, falling down)
+function createMenuParticle(x, y) {
+    const p = document.createElement('div');
+    p.className = 'menu-particle';
+    document.body.appendChild(p);
+
+    // Mud Colors
+    const colors = ['#795548', '#5d4037', '#8d6e63', '#4e342e', '#3e2723'];
+    p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+
+    // Physics: Low horizontal spread, High vertical gravity
+    let vx = (Math.random() - 0.5) * 3; 
+    let vy = Math.random() * 2;         // Start with small downward velocity
+    let life = 1.0;
+
+    const anim = setInterval(() => {
+        const currentLeft = parseFloat(p.style.left);
+        const currentTop = parseFloat(p.style.top);
+        
+        vy += 0.5; // Gravity (Heavy mud)
+
+        p.style.left = (currentLeft + vx) + 'px';
+        p.style.top = (currentTop + vy) + 'px';
+        p.style.opacity = life;
+        
+        life -= 0.03; // Fade out
+        
+        if (life <= 0) {
+            clearInterval(anim);
+            p.remove();
+        }
+    }, 16);
+}
+
+// Celebration Burst (Gold/Green/White) - Happens when lock breaks
+function createUnlockBurst(x, y) {
+    for(let i=0; i<15; i++) {
+        const p = document.createElement('div');
+        p.className = 'menu-particle'; // Reuse class for sizing
+        document.body.appendChild(p);
+        
+        const colors = ['#f1c40f', '#2ecc71', '#fff'];
+        p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        p.style.left = x + 'px';
+        p.style.top = y + 'px';
+        
+        // Explode outward
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5 + 3;
+        let vx = Math.cos(angle) * speed;
+        let vy = Math.sin(angle) * speed;
+        let life = 1.0;
+        
+        const anim = setInterval(() => {
+            const currentLeft = parseFloat(p.style.left);
+            const currentTop = parseFloat(p.style.top);
+            p.style.left = (currentLeft + vx) + 'px';
+            p.style.top = (currentTop + vy) + 'px';
+            p.style.opacity = life;
+            life -= 0.05;
+            if (life <= 0) { clearInterval(anim); p.remove(); }
+        }, 16);
     }
 }
 

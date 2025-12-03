@@ -27,6 +27,7 @@
                     </div>
             </div>
             <div id="controls">
+                <button id="exit-btn" onclick="requestExit()" style="background: #c0392b; margin-right: 5px;">Exit</button>
                 <button id="mute-btn" onclick="toggleSound()">🔊</button>
                 <button id="speed-btn" class="speed-btn" onclick="toggleSpeed()">1x</button>
                 <button id="start-wave-btn" class="start-wave">Start Wave</button>
@@ -94,6 +95,29 @@
         <div id="campaign-screen" class="modal hidden" style="background: rgba(10, 10, 15, 0.95);">
             <h1 style="margin-bottom: 0;">Mission Select</h1>
             
+            <div style="position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 5px;">
+                <button id="unlock-btn" onclick="requestUnlock()" style="background: transparent; border: 1px solid #555; font-size: 10px; padding: 5px 10px; color: #888;">
+                    🔓 Unlock All
+                </button>
+                
+                <button id="unlock-confirm-btn" onclick="confirmUnlock()" style="
+                    background: #2ecc71; 
+                    border: none; 
+                    color: white; 
+                    font-size: 10px; 
+                    padding: 5px 8px; 
+                    border-radius: 4px;
+                    width: 0; 
+                    overflow: hidden; 
+                    padding: 0; 
+                    opacity: 0;
+                    transition: all 0.3s ease;
+                    white-space: nowrap;
+                    cursor: pointer;">
+                    ✓
+                </button>
+            </div>
+
             <div class="campaign-map-container">
                 <svg class="campaign-path" width="600" height="400">
                     <path d="M 70 300 Q 100 100 230 100" stroke="#555" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="10, 10" id="path-1-2" />
@@ -123,6 +147,15 @@
             </div>
 
             <button class="modal-btn" style="margin-top: 20px; background: #c0392b;" onclick="backToTitle()">Back</button>
+        </div>
+
+        <div id="exit-confirm-modal" class="modal hidden" style="z-index: 200;">
+            <h1>Quit Game?</h1>
+            <p>Return to Main Menu?</p>
+            <div style="display:flex; gap:20px;">
+                <button class="modal-btn btn-yes" onclick="confirmExit()">Yes, Quit</button>
+                <button class="modal-btn btn-no" onclick="cancelExit()" style="background:#7f8c8d;">Cancel</button>
+            </div>
         </div>
 
         <div id="game-over-screen" class="modal hidden">
