@@ -1,15 +1,15 @@
 # 🧟 Zombie Defense Command
 
-**Zombie Defense Command** is a feature-rich, browser-based strategy tower defense game built using vanilla JavaScript and HTML5 Canvas. Defend your base across three unique environments, manage your economy, and upgrade an arsenal of specialized towers to stop the undead horde.
+**Zombie Defense Command** is a feature-rich, browser-based strategy tower defense game built using vanilla JavaScript and HTML5 Canvas. Defend your base across four unique environments, manage your economy, upgrade an arsenal of specialized towers, and build your own mazes to stop the undead horde.
 
 ## 🎮 Game Features
 
-* **3 Unique Maps:** Each map introduces new enemies, specific towers, and unique mechanics (like Teleporters).
+* **4 Unique Maps:** Each map introduces new enemies, specific towers, and unique mechanics (like Teleporters and Placeable Walls).
+* **Campaign Mode:** A visual mission select screen with unlockable paths. Conquer a map to reveal the next one!
 * **Save & Load System:** Progress is auto-saved after every wave. Close the browser and resume right where you left off.
-* **Dynamic Wave Logic:** Waves get progressively harder, featuring distinct phases, boss fights, and swarm events.
+* **Maze Building:** On Map 4, place barricades to force enemies into kill zones and longer paths.
 * **Tower Synergy:** Use support units like the **Trumpeter** or **Chemist** to buff your towers or debuff enemies.
-* **Complex Enemy AI:** Enemies feature regeneration, summoning abilities, shield mechanics, and buffing auras.
-* **Patch Notes System:** In-game changelog alerts players to new updates upon loading.
+* **Complex Enemy AI:** Enemies feature regeneration, summoning abilities, shield mechanics, evasion, and tower-disabling abilities.
 
 ---
 
@@ -38,6 +38,16 @@
 * **Unique Enemies:**
     * **Scientists:** Buff nearby enemies (Speed, Health, +Armor).
     * **Mutants:** Massive health regeneration tanks.
+
+### Map 4: Dusty Canyon 🏜️
+* **Difficulty:** Master
+* **Theme:** Narrow canyon with customizable pathing.
+* **Unique Mechanics:**
+    * **Barricades:** You gain 1 Wall every 10 waves. Place them to reroute enemies.
+    * **Cliff Walls:** Projectiles like the **Ricochet** bounce off the canyon edges.
+* **Unique Enemies:**
+    * **Cowboy:** Disables towers in a "Standoff" (Red Circle indicator).
+    * **Dust Devil:** Has a 30% chance to evade non-AoE projectiles.
 
 ---
 
@@ -69,16 +79,25 @@ Different maps provide access to different technology tiers.
 | **Railgun** | Heavy Dmg | Fires a massive beam that pierces through *all* enemies in a line. |
 | **Lab Laser** | Single Target | A specialized laser trooper. Costly, but essential for shields. |
 
+### Canyon Tech (Map 4)
+| Tower | Role | Description |
+| :--- | :--- | :--- |
+| **Ricochet** | Bouncing | Fires discs that bounce off canyon walls and player barricades. |
+| **Demolitionist** | Traps | Places Mines (and C4) on the path. Great for killing armor. |
+| **Subwoofer** | Crowd Control | Uses sonic waves to **Knockback** enemies. Every 3rd shot is a massive bass drop. |
+| **Gatling** | Rapid Fire | Starts slow, but spins up to insane fire rates over time. |
+
 ---
 
 ## 🕹️ Controls
 
 * **Select Tower:** Click a card in the bottom-right palette.
 * **Place Tower:** Click on a valid spot on the map.
+* **Place Wall (Map 4):** Click the "Barricade" button to modify the enemy path.
 * **Upgrade/Sell:** Click on an existing tower to open the upgrade panel.
 * **Start Wave:** Click the green button in the top-right.
 * **Speed Up:** Toggle between 1x and 2x game speed.
-* **Mute:** Toggle sound effects in the top-right.
+* **Mute/Exit:** Controls located in the top-right corner.
 
 ## 🚀 How to Run
 
@@ -92,9 +111,10 @@ The link `https://dommakarov1.github.io/ZombieDefence/` will always have the lat
 
 ## 📝 Version History
 
-**Current Version: v3.3**
-* Added Save/Load functionality.
-* Added Scientist buff abilities (Visual blue arrow indicator).
-* Added visual Wave Progress Bar.
-* Rebalanced Map 3 and Map 2 difficulty curves.
-* Enhanced blood splatters and puddle rendering.
+**Current Version: v4.0**
+* **NEW Map 4 (Dusty Canyon):** Added new map with Wall Placement mechanic.
+* **Campaign Mode:** Implemented visual mission select screen with unlock animations.
+* **New Towers:** Added Ricochet, Demolitionist, Subwoofer, and Gatling Sentry.
+* **New Enemies:** Added Cowboy (Tower disabler) and Dust Devil (Evasion).
+* **Visuals:** Added particle effects for unlocking maps and specific projectile interactions.
+* **QoL:** Added "Exit to Menu" button and "Unlock All" debug feature.
